@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RACING GOA</title>
+<style>
+:root {
+  --bg-color: #0f1016;
+  --card-bg: #181a24;
+  --panel-bg: #131520;
+  --accent-color: #ffd700;
+  --accent-green: #2ecc71;
+  --accent-red: #e74c3c;
+  --accent-blue: #3498db;
+  --text-main: #ffffff;
+  --text-muted: #8e94a7;
+  --border-color: #2a2d3d;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+html, body { height: 100%; }
+body { background-color: var(--bg-color); color: var(--text-main); }
+
+/* ---------- 로그인 모달 ---------- */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(5,6,10,0.85);
+  display: flex; align-items: center; justify-content: center; z-index: 1000;
+}
+.modal-box {
+  background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 16px;
+  padding: 30px; width: 380px; max-width: 92vw; box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+}
+.modal-title { font-size: 22px; font-weight: 800; margin-bottom: 6px; }
+.modal-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 18px; line-height: 1.5; }
+.modal-label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 6px; }
+.modal-input {
+  width: 100%; background: #0f1119; border: 1px solid var(--border-color); border-radius: 8px;
+  padding: 12px; color: var(--text-main); font-size: 14px; margin-bottom: 10px;
+}
+.modal-divider { text-align: center; color: var(--text-muted); font-size: 12px; margin: 16px 0; }
+.modal-error { color: #ff8888; font-size: 12px; margin-top: 10px; min-height: 16px; }
+
+.btn { border: none; border-radius: 10px; padding: 12px 16px; font-size: 14px; font-weight: 700; cursor: pointer; width: 100%; }
+.btn-main { background: linear-gradient(135deg, #ff9900, #ff5500); color: #fff; margin-bottom: 8px; }
+.btn-main:hover { filter: brightness(1.08); }
+.btn-main:disabled { opacity: 0.4; cursor: default; }
+.btn-sub { background: #262a3a; color: var(--text-main); }
+.btn-sub:hover { background: #303549; }
+
+/* ---------- 앱 레이아웃 ---------- */
+.app-shell { display: flex; flex-direction: column; height: 100vh; }
+.topbar {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 12px 24px; background: var(--panel-bg); border-bottom: 1px solid var(--border-color);
+}
+.topbar-brand { font-size: 19px; font-weight: 800; letter-spacing: 0.5px; }
+.topbar-stats { display: flex; align-items: center; gap: 10px; }
+.stat-chip { background: #1c1f2c; border: 1px solid var(--border-color); border-radius: 20px; padding: 6px 14px; font-size: 13px; display: flex; gap: 6px; align-items: center; }
+.stat-label { color: var(--text-muted); font-size: 11px; }
+.stat-value { font-weight: 800; }
+.stat-value.money { color: var(--accent-green); }
+.btn-mini { background: #262a3a; color: var(--text-main); border: none; border-radius: 20px; padding: 7px 14px; font-size: 12px; cursor: pointer; font-weight: 700; }
+.btn-mini:hover { background: #303549; }
+
+.app-body { flex: 1; display: flex; overflow: hidden; }
+
+.side-nav { width: 84px; background: var(--panel-bg); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; padding: 16px 0; gap: 6px; flex-shrink: 0; }
+.nav-btn {
+  background: none; border: none; color: var(--text-muted); cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  font-size: 24px; padding: 12px 4px; border-left: 3px solid transparent;
+}
+.nav-btn span { font-size: 11px; font-weight: 700; }
+.nav-btn:hover { color: var(--text-main); background: #1b1e2a; }
+.nav-btn.active { color: var(--accent-color); border-left-color: var(--accent-color); background: #1e1a10; }
+
+.main-content { flex: 1; overflow-y: auto; padding: 20px 24px; }
+.view { display: none; }
+.view.active { display: block; }
+
+.hub-title { font-size: 20px; font-weight: 800; margin-bottom: 16px; }
+
+/* ---------- 경마 ---------- */
+.race-layout { display: flex; gap: 20px; align-items: flex-start; }
+.race-main { flex: 1; min-width: 0; }
+.race-side { width: 300px; flex-shrink: 0; }
+
+.cycle-banner { display: flex; justify-content: space-between; align-items: center; background: #1b1d2c; border: 1px solid var(--border-color); border-radius: 10px; padding: 10px 16px; margin-bottom: 12px; font-size: 13px; }
+.cycle-phase-tag { font-weight: 800; padding: 4px 12px; border-radius: 20px; font-size: 12px; }
+.cycle-phase-tag.prep { background: #23405a; color: #7fd0ff; }
+.cycle-phase-tag.racing { background: #4a2a1c; color: #ff9f5a; }
+.cycle-phase-tag.result { background: #3a3018; color: var(--accent-color); }
+.race-number-label { margin-left: 10px; color: var(--text-muted); font-size: 13px; }
+.cycle-timer { font-weight: 800; font-size: 16px; }
+
+.race-info-card { background: #10121a; border: 1px solid var(--border-color); border-radius: 10px; padding: 14px 16px; margin-bottom: 12px; font-size: 12px; color: var(--text-muted); }
+.race-info-title { font-size: 15px; font-weight: 800; color: var(--text-main); margin-bottom: 10px; }
+.race-info-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px 10px; }
+.race-info-grid div b { color: var(--text-main); display: block; font-size: 12px; margin-top: 2px; }
+
+.race-title-banner {
+  max-height: 0; opacity: 0; overflow: hidden; text-align: center;
+  background: linear-gradient(135deg, #3a2f0a, #1a1a0d); border: 1px solid var(--accent-color);
+  border-radius: 10px; transition: max-height 0.4s ease, opacity 0.4s ease, margin 0.4s ease; margin-bottom: 0;
+}
+.race-title-banner.show { max-height: 80px; opacity: 1; margin-bottom: 12px; padding: 14px 10px; }
+.race-title-banner .rt-sub { font-size: 12px; color: var(--text-muted); margin-bottom: 3px; letter-spacing: 1px; }
+.race-title-banner .rt-main { font-size: 22px; font-weight: 800; color: var(--accent-color); letter-spacing: 1px; }
+
+.track-box {
+  position: relative; background: radial-gradient(ellipse at center, #16321f 0%, #0d1a10 100%);
+  border: 1px solid #274430; border-radius: 12px; padding: 14px 20px; margin-bottom: 12px; min-height: 260px;
+}
+.track-finish-line {
+  position: absolute; top: 10px; bottom: 10px; right: 40px; width: 3px;
+  background: repeating-linear-gradient(180deg, #fff 0 6px, #000 6px 12px);
+}
+#track-lanes { display: flex; flex-direction: column; gap: 6px; }
+.track-lane { position: relative; height: 36px; background: rgba(255,255,255,0.03); border-radius: 6px; }
+.track-lane-num { position: absolute; left: 6px; top: 50%; transform: translateY(-50%); font-size: 10px; color: var(--text-muted); font-weight: 700; }
+.track-horse {
+  position: absolute; top: 50%; transform: translate(0, -50%); left: 24px; font-size: 20px; transition: left 0.85s linear;
+  filter: drop-shadow(0 1px 1.5px rgba(0,0,0,0.6));
+}
+.track-horse.winner { filter: drop-shadow(0 0 6px var(--accent-color)); }
+.track-horse.bet-pick::after { content: "★"; position: absolute; top: -12px; left: 4px; color: #ff5a5a; font-size: 11px; }
+
+.course-standings { background: #10121a; border: 1px solid var(--border-color); border-radius: 10px; padding: 10px 14px; margin-bottom: 12px; font-size: 12px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px 10px; }
+.standing-row { display: flex; justify-content: space-between; color: var(--text-muted); }
+.standing-row.p1 { color: var(--accent-color); font-weight: 800; }
+
+.race-result-box { background: #10121a; border: 1px solid var(--accent-color); border-radius: 10px; padding: 14px; margin: 10px 0; font-size: 13px; line-height: 1.7; }
+.race-result-box .rank-row { display: flex; justify-content: space-between; padding: 3px 0; }
+.race-result-box .report-block { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border-color); color: var(--text-muted); }
+.race-result-box .report-block b { color: var(--text-main); }
+
+.horse-select-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 12px 0; }
+.horse-card { background: #1f2230; border: 1px solid var(--border-color); border-radius: 10px; padding: 12px; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
+.horse-card:hover { border-color: #4a4f6b; }
+.horse-card.selected { border-color: var(--accent-color); background: #2a2717; }
+.horse-card.disabled { cursor: default; opacity: 0.55; }
+.horse-card-top { display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 700; margin-bottom: 3px; }
+.horse-title-tag { font-size: 11px; color: #ffcf6b; margin-bottom: 6px; }
+.odds-tag { color: var(--accent-color); font-size: 12px; }
+.horse-meta-row { display: flex; gap: 6px; font-size: 10px; color: var(--text-muted); margin-bottom: 6px; flex-wrap: wrap; }
+.horse-meta-row span { background: #14151f; padding: 2px 6px; border-radius: 5px; }
+.form-dots { display: flex; gap: 3px; margin-top: 5px; }
+.form-dot { width: 16px; height: 16px; border-radius: 4px; font-size: 9px; font-weight: 800; display: flex; align-items: center; justify-content: center; color: #fff; }
+
+.bet-control-panel { background: #1f2230; border-radius: 12px; padding: 16px; position: sticky; top: 0; }
+.bet-control-panel.disabled { opacity: 0.5; pointer-events: none; }
+.bet-display-row { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.bet-label { font-size: 12px; color: var(--text-muted); }
+.bet-amount-text { font-size: 24px; font-weight: 800; color: var(--accent-color); }
+.bet-btn-group { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 8px; }
+.bet-btn-group-sub { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 8px; }
+.btn-bet { padding: 10px 4px; font-size: 13px; background: #2c3044; border: 1px solid #3f4460; color: #e0e3f0; border-radius: 8px; cursor: pointer; font-weight: 600; }
+.btn-bet:hover { background: #383e58; }
+.btn-bet-neg { background: #38252a; border-color: #58333b; color: #ff99a8; }
+.btn-bet-neg:hover { background: #482f35; }
+.bet-hint { font-size: 11px; color: var(--text-muted); text-align: center; margin-top: 10px; line-height: 1.5; }
+
+/* ---------- 시장 ---------- */
+.shop-dir-card { background: #1f2230; border: 1px solid var(--border-color); border-radius: 14px; padding: 18px; display: flex; align-items: center; gap: 16px; cursor: pointer; margin-bottom: 12px; transition: transform 0.15s, border-color 0.2s, background 0.2s; max-width: 520px; }
+.shop-dir-card:hover { transform: translateY(-2px); border-color: #4a4f6b; background: #25293a; }
+.shop-dir-icon { font-size: 32px; background: #131520; width: 56px; height: 56px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.shop-dir-info h3 { font-size: 16px; margin-bottom: 4px; }
+.shop-dir-info p { font-size: 12px; color: var(--text-muted); }
+
+.market-panel { max-width: 520px; }
+.btn-back-mini { background: none; border: none; color: var(--text-muted); font-size: 13px; cursor: pointer; margin-bottom: 12px; }
+.btn-back-mini:hover { color: var(--text-main); }
+
+.shop-item-card { background: #161824; border: 1px solid var(--border-color); border-radius: 12px; padding: 18px; margin-bottom: 12px; }
+.shop-item-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.shop-item-top h3 { font-size: 16px; }
+.shop-item-price { color: var(--accent-color); font-weight: 800; font-size: 15px; }
+.shop-item-desc { font-size: 13px; color: var(--text-muted); line-height: 1.6; margin-bottom: 12px; }
+.shop-item-status { font-size: 13px; color: #8fe3a0; margin-bottom: 10px; font-weight: 700; }
+.shop-item-owned-badge { display: inline-block; background: #23405a; color: #7fd0ff; font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 20px; margin-bottom: 10px; }
+
+/* ---------- 쓰레기통 ---------- */
+.trash-box { max-width: 420px; text-align: center; background: #161824; border: 1px solid var(--border-color); border-radius: 14px; padding: 30px; }
+.trash-icon { font-size: 90px; margin-bottom: 20px; transition: transform 0.15s; cursor: pointer; }
+.trash-icon.shake { animation: shake 0.3s; }
+@keyframes shake { 0%,100% { transform: rotate(0); } 25% { transform: rotate(-8deg); } 75% { transform: rotate(8deg); } }
+.trash-log { margin-top: 18px; text-align: left; background: #0a0b10; border: 1px solid #1f2230; border-radius: 10px; padding: 12px; height: 160px; overflow-y: auto; font-size: 13px; color: var(--text-muted); }
+.trash-log .log-entry { margin-bottom: 5px; }
+.trash-log .log-entry.win { color: var(--accent-color); font-weight: bold; }
+.trash-log .log-entry.money { color: var(--accent-green); }
+
+/* ---------- 채팅 ---------- */
+.chat-panel { width: 280px; flex-shrink: 0; background: var(--panel-bg); border-left: 1px solid var(--border-color); display: flex; flex-direction: column; }
+.chat-title { padding: 14px 16px; font-weight: 800; font-size: 14px; border-bottom: 1px solid var(--border-color); }
+.chat-messages { flex: 1; overflow-y: auto; padding: 10px 14px; font-size: 13px; }
+.chat-msg { margin-bottom: 10px; line-height: 1.4; }
+.chat-msg .chat-nick { font-weight: 800; color: var(--accent-color); margin-right: 6px; }
+.chat-msg.system { color: var(--text-muted); font-size: 12px; font-style: italic; }
+.chat-input-row { display: flex; gap: 6px; padding: 10px 14px; border-top: 1px solid var(--border-color); }
+.chat-input { flex: 1; background: #0f1119; border: 1px solid var(--border-color); border-radius: 8px; padding: 8px 10px; color: var(--text-main); font-size: 13px; }
+
+/* ---------- 토스트 ---------- */
+.toast-container { position: fixed; bottom: 20px; right: 300px; z-index: 2000; display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
+.toast { background: #1f2230; border: 1px solid var(--border-color); border-radius: 10px; padding: 12px 16px; font-size: 13px; box-shadow: 0 8px 20px rgba(0,0,0,0.5); animation: toast-in 0.2s ease; max-width: 320px; }
+.toast.win { border-color: var(--accent-color); color: var(--accent-color); font-weight: 700; }
+.toast.error { border-color: #e74c3c; color: #ff9d9d; }
+@keyframes toast-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+@media (max-width: 1000px) {
+  .chat-panel { display: none; }
+  .race-layout { flex-direction: column; }
+  .race-side { width: 100%; }
+  .toast-container { right: 20px; }
+}
+
+</style>
+</head>
+<body>
+
+  <!-- 로그인 모달 -->
+  <div id="login-modal" class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-title">🏇 RACING GOA</div>
+      <div class="modal-sub">모두가 같은 경마를 함께 보는 공용 경마장입니다.</div>
+
+      <div id="login-new">
+        <label class="modal-label">닉네임으로 입장</label>
+        <input id="nickname-input" class="modal-input" maxlength="12" placeholder="닉네임 입력 (1~12자)">
+        <button class="btn btn-main" id="btn-join">입장하기</button>
+      </div>
+
+      <div class="modal-divider">또는</div>
+
+      <div id="login-recover">
+        <label class="modal-label">복구 코드로 재접속 (기존 계정)</label>
+        <input id="recovery-input" class="modal-input" placeholder="복구 코드 붙여넣기">
+        <button class="btn btn-sub" id="btn-recover">복구 코드로 로그인</button>
+      </div>
+
+      <div id="login-error" class="modal-error"></div>
+    </div>
+  </div>
+
+  <!-- 복구 코드 안내 모달 (신규 가입 직후 1회 표시) -->
+  <div id="recovery-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-box">
+      <div class="modal-title">🔑 복구 코드를 저장하세요</div>
+      <div class="modal-sub">이 코드가 있어야 다른 브라우저/기기에서 같은 계정으로 접속할 수 있습니다.<br>이 브라우저에는 자동 저장되었습니다.</div>
+      <input id="recovery-code-display" class="modal-input" readonly>
+      <button class="btn btn-main" id="btn-recovery-copy">복사하기</button>
+      <button class="btn btn-sub" id="btn-recovery-close">확인, 시작하기</button>
+    </div>
+  </div>
+
+  <div id="app" class="app-shell" style="display:none;">
+
+    <!-- 상단바 -->
+    <header class="topbar">
+      <div class="topbar-brand">🏇 RACING GOA</div>
+      <div class="topbar-stats">
+        <div class="stat-chip"><span class="stat-label">닉네임</span><span class="stat-value" id="hdr-nickname">-</span></div>
+        <div class="stat-chip"><span class="stat-label">소지금</span><span class="stat-value money" id="hdr-money">$0</span></div>
+        <div class="stat-chip" id="hdr-rose-chip" style="display:none;"><span class="stat-value">🌹 장미 보유</span></div>
+        <button class="btn-mini" id="btn-show-recovery">내 복구코드</button>
+      </div>
+    </header>
+
+    <div class="app-body">
+
+      <!-- 좌측 네비 -->
+      <nav class="side-nav">
+        <button class="nav-btn active" data-view="race-view">🏇<span>경마</span></button>
+        <button class="nav-btn" data-view="market-view">🏪<span>시장</span></button>
+        <button class="nav-btn" data-view="trash-view">🗑️<span>쓰레기통</span></button>
+      </nav>
+
+      <!-- 메인 컨텐츠 -->
+      <main class="main-content">
+
+        <!-- 경마 뷰 -->
+        <section id="race-view" class="view active">
+          <div class="race-layout">
+            <div class="race-main">
+              <div class="cycle-banner">
+                <div>
+                  <span class="cycle-phase-tag prep" id="cycle-phase-tag">준비중</span>
+                  <span class="race-number-label" id="race-number-label">제 1회 경기</span>
+                </div>
+                <div class="cycle-timer" id="cycle-timer">--</div>
+              </div>
+
+              <div class="race-info-card" id="race-info-card">
+                <div class="race-info-title" id="race-info-title">경기 정보를 불러오는 중...</div>
+                <div class="race-info-grid" id="race-info-grid"></div>
+              </div>
+
+              <div id="race-title-banner" class="race-title-banner"></div>
+
+              <div class="track-box" id="track-box">
+                <div class="track-finish-line"></div>
+                <div id="track-lanes"></div>
+              </div>
+
+              <div class="course-standings" id="course-standings"></div>
+
+              <div id="race-result-box" class="race-result-box" style="display:none;"></div>
+
+              <div class="horse-select-grid" id="horse-select-grid"></div>
+            </div>
+
+            <aside class="race-side">
+              <div class="bet-control-panel" id="race-bet-panel">
+                <div class="bet-display-row">
+                  <span class="bet-label">베팅 금액 (선택마: <span id="race-selected-label">없음</span>)</span>
+                  <span class="bet-amount-text" id="race-bet-display">$10</span>
+                </div>
+                <div class="bet-btn-group">
+                  <button class="btn-bet" data-amt="10">+$10</button>
+                  <button class="btn-bet" data-amt="100">+$100</button>
+                  <button class="btn-bet" data-amt="1000">+$1000</button>
+                </div>
+                <div class="bet-btn-group-sub">
+                  <button class="btn-bet btn-bet-neg" data-amt="-10">-$10</button>
+                  <button class="btn-bet btn-bet-neg" data-amt="-100">-$100</button>
+                </div>
+                <div class="bet-btn-group-sub">
+                  <button class="btn-bet" id="btn-race-allin">ALL IN</button>
+                  <button class="btn-bet btn-bet-neg" id="btn-race-reset">초기화</button>
+                </div>
+                <button class="btn btn-main" id="btn-confirm-bet" style="margin-top:10px;">이 말에 베팅하기</button>
+                <button class="btn btn-sub" id="btn-cancel-bet" style="margin-top:6px; display:none;">베팅 취소</button>
+                <div class="bet-hint">마감 전(준비 단계)에만 베팅할 수 있습니다. 1위는 배당금 그대로, 2위는 ×0.3, 3위는 ×0.1 지급됩니다.</div>
+              </div>
+            </aside>
+          </div>
+        </section>
+
+        <!-- 시장 허브 -->
+        <section id="market-view" class="view">
+          <div class="hub-title">🏪 시장</div>
+          <div class="shop-dir-card" data-market="agency-panel">
+            <div class="shop-dir-icon">👷</div>
+            <div class="shop-dir-info"><h3>인력사무소</h3><p>알바생을 고용해 쓰레기통에서 자동으로 돈을 법니다.</p></div>
+          </div>
+          <div class="shop-dir-card" data-market="haru-panel">
+            <div class="shop-dir-icon">🌹</div>
+            <div class="shop-dir-info"><h3>HARU'S SHOP</h3><p>누군가의 장미 — 경마 2위 배당 페널티 제거.</p></div>
+          </div>
+
+          <div id="agency-panel" class="market-panel" style="display:none;">
+            <button class="btn-back-mini">← 시장으로</button>
+            <div class="shop-item-card">
+              <div class="shop-item-top"><h3>🗑️👷 쓰레기통 알바생</h3><span class="shop-item-price" id="worker-price">$500</span></div>
+              <div class="shop-item-desc">고용하면 8초마다 자동으로 쓰레기통을 뒤져 돈을 벌어옵니다. (다른 화면에 있거나 접속을 끊어도 계속 일합니다)<br>최대 5명까지 고용 가능.</div>
+              <div class="shop-item-owned-badge" id="worker-owned-badge">현재 고용 인원: 0 / 5</div><br>
+              <button class="btn btn-main" id="btn-buy-worker">고용하기</button>
+            </div>
+          </div>
+
+          <div id="haru-panel" class="market-panel" style="display:none;">
+            <button class="btn-back-mini">← 시장으로</button>
+            <div class="shop-item-card">
+              <div class="shop-item-top"><h3>🌹 누군가의 장미</h3><span class="shop-item-price">$30,000</span></div>
+              <div class="shop-item-desc">경마에서 2위로 들어왔을 때 원래는 배당금의 30%만 지급되지만, 이 아이템을 가지고 있으면 페널티 없이 배당금 전액을 지급받습니다.</div>
+              <div id="rose-owned-badge" class="shop-item-status" style="display:none;">✅ 보유 중</div>
+              <button class="btn btn-main" id="btn-buy-rose">구매하기</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- 쓰레기통 뷰 -->
+        <section id="trash-view" class="view">
+          <div class="hub-title">🗑️ 쓰레기통</div>
+          <div class="trash-box">
+            <div class="trash-icon" id="trash-icon">🗑️</div>
+            <button class="btn btn-main" id="btn-search-trash">뒤지기</button>
+            <div class="trash-log" id="trash-log"></div>
+          </div>
+        </section>
+
+      </main>
+
+      <!-- 채팅 사이드바 -->
+      <aside class="chat-panel">
+        <div class="chat-title">💬 채팅</div>
+        <div class="chat-messages" id="chat-messages"></div>
+        <div class="chat-input-row">
+          <input id="chat-input" class="chat-input" maxlength="300" placeholder="메시지 입력...">
+          <button class="btn-mini" id="btn-chat-send">전송</button>
+        </div>
+      </aside>
+
+    </div>
+  </div>
+
+  <div id="toast-container" class="toast-container"></div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+(() => {
+  const socket = io();
+
+  // ---------- 상태 ----------
+  let myToken = localStorage.getItem("racingGoaToken") || null;
+  let myUser = { nickname: "", money: 0, haruRose: false, workerCount: 0 };
+
+  let cyclePhase = "PREP";
+  let currentRace = null;
+  let fieldHorses = [];
+  let laneAssignment = {};
+  let phaseEndsAt = 0;
+  let selectedHorseId = null;
+  let raceBet = 10;
+  let myBetConfirmed = null; // {horseId, amount} once confirmed this race
+
+  // ---------- DOM helpers ----------
+  const $ = (id) => document.getElementById(id);
+  function show(el) { el.style.display = ""; }
+  function hide(el) { el.style.display = "none"; }
+
+  function toast(text, type) {
+    const c = $("toast-container");
+    const div = document.createElement("div");
+    div.className = "toast" + (type ? " " + type : "");
+    div.textContent = text;
+    c.appendChild(div);
+    setTimeout(() => div.remove(), 4500);
+  }
+
+  // ---------- 로그인 ----------
+  function tryAutoLogin() {
+    if (myToken) {
+      socket.emit("auth:token", { token: myToken });
+    }
+  }
+
+  $("btn-join").addEventListener("click", () => {
+    const nickname = $("nickname-input").value.trim();
+    if (!nickname) return;
+    socket.emit("auth:nickname", { nickname });
+  });
+  $("nickname-input").addEventListener("keydown", (e) => { if (e.key === "Enter") $("btn-join").click(); });
+
+  $("btn-recover").addEventListener("click", () => {
+    const token = $("recovery-input").value.trim();
+    if (!token) return;
+    socket.emit("auth:token", { token });
+  });
+  $("recovery-input").addEventListener("keydown", (e) => { if (e.key === "Enter") $("btn-recover").click(); });
+
+  socket.on("auth:error", (data) => {
+    $("login-error").textContent = data.message || "로그인에 실패했습니다.";
+  });
+
+  let isNewSignup = false;
+  socket.on("auth:ok", (data) => {
+    myToken = data.token;
+    localStorage.setItem("racingGoaToken", myToken);
+    myUser = data.user;
+    $("login-modal").style.display = "none";
+    $("app").style.display = "flex";
+    updateHeader();
+    if (isNewSignup) {
+      $("recovery-code-display").value = myToken;
+      $("recovery-modal").style.display = "flex";
+      isNewSignup = false;
+    }
+  });
+
+  // nickname 제출 시 신규가입 여부 표시용 플래그 세팅
+  $("btn-join").addEventListener("click", () => { isNewSignup = true; });
+
+  $("btn-recovery-copy").addEventListener("click", () => {
+    $("recovery-code-display").select();
+    document.execCommand("copy");
+    toast("복구 코드를 복사했습니다.");
+  });
+  $("btn-recovery-close").addEventListener("click", () => { $("recovery-modal").style.display = "none"; });
+  $("btn-show-recovery").addEventListener("click", () => {
+    $("recovery-code-display").value = myToken || "";
+    $("recovery-modal").style.display = "flex";
+  });
+
+  function updateHeader() {
+    $("hdr-nickname").textContent = myUser.nickname || "-";
+    $("hdr-money").textContent = "$" + (myUser.money || 0).toLocaleString();
+    $("hdr-rose-chip").style.display = myUser.haruRose ? "" : "none";
+    renderAgencyPanel();
+    renderHaruPanel();
+  }
+
+  tryAutoLogin();
+
+  // ---------- 네비게이션 ----------
+  document.querySelectorAll(".nav-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
+      document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+      btn.classList.add("active");
+      $(btn.dataset.view).classList.add("active");
+    });
+  });
+
+  document.querySelectorAll(".shop-dir-card").forEach(card => {
+    card.addEventListener("click", () => {
+      $(card.dataset.market).style.display = "block";
+      card.parentElement.querySelectorAll(".shop-dir-card").forEach(c => c.style.display = "none");
+    });
+  });
+  document.querySelectorAll(".btn-back-mini").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const panel = btn.closest(".market-panel");
+      panel.style.display = "none";
+      document.querySelectorAll(".shop-dir-card").forEach(c => c.style.display = "flex");
+    });
+  });
+
+  // ---------- 채팅 ----------
+  socket.on("chat:history", (msgs) => {
+    $("chat-messages").innerHTML = "";
+    msgs.forEach(renderChatMessage);
+  });
+  socket.on("chat:message", renderChatMessage);
+  socket.on("chat:system", (data) => {
+    renderChatMessage({ system: true, text: data.text });
+  });
+  function renderChatMessage(msg) {
+    const box = $("chat-messages");
+    const div = document.createElement("div");
+    if (msg.system) {
+      div.className = "chat-msg system";
+      div.textContent = msg.text;
+    } else {
+      div.className = "chat-msg";
+      div.innerHTML = `<span class="chat-nick">${escapeHtml(msg.nickname)}</span>${escapeHtml(msg.text)}`;
+    }
+    box.appendChild(div);
+    box.scrollTop = box.scrollHeight;
+  }
+  function escapeHtml(s) {
+    return (s || "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+  function sendChat() {
+    const input = $("chat-input");
+    const text = input.value.trim();
+    if (!text) return;
+    socket.emit("chat:send", { text });
+    input.value = "";
+  }
+  $("btn-chat-send").addEventListener("click", sendChat);
+  $("chat-input").addEventListener("keydown", (e) => { if (e.key === "Enter") sendChat(); });
+
+  // ================= 경마 =================
+  const distanceCategoryLabel = { sprint: "단거리", mile: "마일", middle: "중거리", long: "장거리" };
+
+  socket.on("race:snapshot", applyRaceSnapshot);
+  function applyRaceSnapshot(snap) {
+    cyclePhase = snap.cyclePhase;
+    currentRace = snap.currentRace;
+    fieldHorses = snap.fieldHorses || [];
+    laneAssignment = snap.laneAssignment || {};
+    phaseEndsAt = snap.phaseEndsAt;
+    if (currentRace) {
+      renderRaceInfoCard();
+      renderTrackLanes();
+      renderHorseCards();
+      applyPositions(snap.horsePositions || {});
+      renderStandings(snap.finishTick || {});
+      setCyclePhaseTag(cyclePhase);
+      $("race-number-label").textContent = `제 ${snap.raceNumber}회 경기`;
+    }
+  }
+
+  socket.on("race:prep", (snap) => {
+    cyclePhase = "PREP";
+    currentRace = snap.currentRace;
+    fieldHorses = snap.fieldHorses;
+    laneAssignment = snap.laneAssignment;
+    phaseEndsAt = snap.phaseEndsAt;
+    selectedHorseId = null;
+    myBetConfirmed = null;
+    raceBet = 10;
+    $("race-bet-display").textContent = "$10";
+    $("race-selected-label").textContent = "없음";
+    $("race-result-box").style.display = "none";
+    $("race-title-banner").classList.remove("show");
+    setBettingEnabled(true);
+    $("btn-confirm-bet").style.display = "";
+    $("btn-cancel-bet").style.display = "none";
+
+    setCyclePhaseTag("PREP");
+    $("race-number-label").textContent = `제 ${snap.raceNumber}회 경기`;
+    renderRaceInfoCard();
+    renderTrackLanes();
+    renderHorseCards();
+    renderStandings({});
+  });
+
+  socket.on("race:banner", (data) => {
+    cyclePhase = "RACING";
+    setBettingEnabled(false);
+    setCyclePhaseTag("RACING");
+    $("cycle-timer").textContent = "";
+    const banner = $("race-title-banner");
+    banner.innerHTML = `<div class="rt-sub">${data.venueName} · ${data.distance}m</div><div class="rt-main">제 ${data.raceNumber}회 「${data.raceTitle}」</div>`;
+    banner.classList.add("show");
+    setTimeout(() => banner.classList.remove("show"), 2800);
+    renderHorseCards();
+  });
+
+  socket.on("race:myBet", (bet) => {
+    myBetConfirmed = bet;
+    selectedHorseId = bet.horseId;
+    raceBet = bet.amount;
+    $("race-bet-display").textContent = "$" + bet.amount.toLocaleString();
+    const h = fieldHorses.find(x => x.id === bet.horseId);
+    $("race-selected-label").textContent = h ? `${laneAssignment[bet.horseId]}번 ${h.name}` : "-";
+    $("btn-confirm-bet").style.display = "none";
+    $("btn-cancel-bet").style.display = "";
+  });
+
+  socket.on("race:betPlaced", () => { /* 다른 유저 베팅 현황 알림 - 현재는 특별한 UI 없음 */ });
+
+  socket.on("race:tick", (data) => {
+    applyPositions(data.horsePositions);
+    renderStandingsFromRanking(data.rankingIds);
+  });
+
+  socket.on("race:result", (data) => {
+    cyclePhase = "RESULT";
+    phaseEndsAt = data.phaseEndsAt;
+    setCyclePhaseTag("RESULT");
+    laneAssignment = data.laneAssignment;
+
+    document.querySelectorAll(".track-horse").forEach(el => el.classList.remove("winner"));
+    const winnerEl = document.querySelector(`.track-horse[data-id="${data.winnerId}"]`);
+    if (winnerEl) winnerEl.classList.add("winner");
+    renderStandingsFromRanking(data.finalRanking);
+
+    const box = $("race-result-box");
+    box.style.display = "block";
+    const medal = ["🥇", "🥈", "🥉"];
+    let html = `<b>[ 제 ${data.raceNumber}회 경기 결과 ]</b><br>`;
+    data.finalRanking.slice(0, 3).forEach((id, i) => {
+      const h = fieldHorses.find(x => x.id === id);
+      const odds = (data.oddsList.find(o => o.id === id) || {}).odds || "-";
+      html += `<div class="rank-row"><span>${medal[i]} ${laneAssignment[id]}번 ${h ? h.name : "?"}</span><span>${odds}배</span></div>`;
+    });
+    const winnerHorse = fieldHorses.find(h => h.id === data.winnerId);
+    html += `<div class="report-block"><b>🏆 승리 요인 (${winnerHorse ? winnerHorse.name : "-"})</b><br>${data.winReasons}</div>`;
+    if (!myBetConfirmed) {
+      html += `<div class="report-block" id="my-bet-report">이번 경기는 관전만 했습니다.</div>`;
+    } else {
+      html += `<div class="report-block" id="my-bet-report">정산 중...</div>`;
+    }
+    box.innerHTML = html;
+  });
+
+  socket.on("race:payout", (data) => {
+    const el = document.getElementById("my-bet-report");
+    const text = `<b>내 베팅 결과</b><br>${data.message}`;
+    if (el) el.innerHTML = text;
+    if (data.payout > 0) toast(data.message, "win");
+    else toast(data.message);
+    if (data.money !== null && data.money !== undefined) {
+      myUser.money = data.money;
+      updateHeader();
+    }
+    myBetConfirmed = null;
+  });
+
+  function setCyclePhaseTag(phase) {
+    const tag = $("cycle-phase-tag");
+    tag.className = "cycle-phase-tag " + phase.toLowerCase();
+    tag.textContent = phase === "PREP" ? "준비중" : (phase === "RACING" ? "🏁 경주중" : "🏆 결과 발표");
+  }
+
+  function setBettingEnabled(enabled) {
+    $("race-bet-panel").classList.toggle("disabled", !enabled);
+  }
+
+  function renderRaceInfoCard() {
+    if (!currentRace) return;
+    const r = currentRace;
+    $("race-info-title").textContent = `🏇 ${r.venue.name} · ${r.trackType === "turf" ? "잔디" : "더트"} ${r.distance}m`;
+    $("race-info-grid").innerHTML = `
+      <div>경기장<b>${r.venue.name}</b></div>
+      <div>트랙<b>${r.trackType === "turf" ? "🌱 잔디" : "🟤 더트"}</b></div>
+      <div>거리<b>${r.distance}m (${distanceCategoryLabel[r.distanceCategory]})</b></div>
+      <div>날씨<b>${r.weather.emoji} ${r.weather.name}</b></div>
+      <div>트랙 상태<b>${r.trackCondition}</b></div>
+      <div>경기 특징<b style="font-weight:600;">${r.venue.desc}</b></div>
+    `;
+  }
+
+  function renderTrackLanes() {
+    const box = $("track-lanes");
+    box.innerHTML = "";
+    fieldHorses.forEach(h => {
+      const lane = laneAssignment[h.id];
+      const laneDiv = document.createElement("div");
+      laneDiv.className = "track-lane";
+      laneDiv.id = "lane-" + lane;
+      laneDiv.innerHTML = `<span class="track-lane-num">${lane}</span><div class="track-horse" data-id="${h.id}">🐎</div>`;
+      box.appendChild(laneDiv);
+    });
+  }
+
+  function applyPositions(positions) {
+    fieldHorses.forEach(h => {
+      const lane = laneAssignment[h.id];
+      const laneEl = $("lane-" + lane);
+      if (!laneEl) return;
+      const horseEl = laneEl.querySelector(".track-horse");
+      if (!horseEl) return;
+      const pct = Math.max(0, Math.min(100, positions[h.id] || 0));
+      const w = laneEl.clientWidth || 500;
+      const usable = w - 60;
+      horseEl.style.left = (16 + (pct / 100) * usable) + "px";
+      if (myBetConfirmed && myBetConfirmed.horseId === h.id) horseEl.classList.add("bet-pick");
+    });
+  }
+
+  function renderStandings(finishTick) {
+    const ids = [...fieldHorses].sort((a, b) => {
+      const fa = finishTick[a.id], fb = finishTick[b.id];
+      const aFin = fa !== undefined, bFin = fb !== undefined;
+      if (aFin && bFin) return fa - fb;
+      if (aFin) return -1;
+      if (bFin) return 1;
+      return 0;
+    }).map(h => h.id);
+    renderStandingsFromRanking(ids);
+  }
+  function renderStandingsFromRanking(rankingIds) {
+    const box = $("course-standings");
+    box.innerHTML = rankingIds.map((id, i) => {
+      const h = fieldHorses.find(x => x.id === id);
+      const cls = i === 0 ? "standing-row p1" : "standing-row";
+      return `<div class="${cls}"><span>${i + 1}위</span><span>${laneAssignment[id]}번 ${h ? h.name : "?"}</span></div>`;
+    }).join("");
+  }
+
+  function renderHorseCards() {
+    const grid = $("horse-select-grid");
+    grid.innerHTML = fieldHorses.map(h => {
+      const oddsEntry = currentRace && currentRace.oddsList ? currentRace.oddsList.find(o => o.id === h.id) : null;
+      const formDots = (h.recentForm || []).map(r => {
+        let bg = "#4a4d68";
+        if (r === 1) bg = "#ffd700"; else if (r === 2) bg = "#c0c0c0"; else if (r === 3) bg = "#cd7f32";
+        return `<div class="form-dot" style="background:${bg};">${r}</div>`;
+      }).join("");
+      const selectedClass = selectedHorseId === h.id ? "selected" : "";
+      const disabledClass = cyclePhase !== "PREP" ? "disabled" : "";
+      const condStars = conditionStars(h.condition || 70);
+      return `
+        <div class="horse-card ${selectedClass} ${disabledClass}" data-id="${h.id}">
+          <div class="horse-card-top"><span>${laneAssignment[h.id]} ${h.name}</span><span class="odds-tag">${oddsEntry ? oddsEntry.odds : "-"}배</span></div>
+          <div class="horse-title-tag">「${h.title.name}」</div>
+          <div class="horse-meta-row">
+            <span>${h.style}</span>
+            <span>잔디${h.turfGrade}/더트${h.dirtGrade}</span>
+            <span>${h.gender} ${h.age}세 · ${h.origin}</span>
+          </div>
+          <div style="font-size:11px; color:var(--text-muted);">컨디션 ${condStars}</div>
+          <div class="form-dots">${formDots}</div>
+        </div>`;
+    }).join("");
+    grid.querySelectorAll(".horse-card").forEach(card => {
+      card.addEventListener("click", () => {
+        if (cyclePhase !== "PREP" || myBetConfirmed) return;
+        selectedHorseId = Number(card.dataset.id);
+        renderHorseCards();
+        const h = fieldHorses.find(x => x.id === selectedHorseId);
+        $("race-selected-label").textContent = `${laneAssignment[selectedHorseId]}번 ${h.name}`;
+      });
+    });
+  }
+  function conditionStars(cond) {
+    if (cond >= 90) return "★★★★★";
+    if (cond >= 75) return "★★★★☆";
+    if (cond >= 55) return "★★★☆☆";
+    if (cond >= 35) return "★★☆☆☆";
+    return "★☆☆☆☆";
+  }
+
+  document.querySelectorAll(".btn-bet[data-amt]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      if (cyclePhase !== "PREP" || myBetConfirmed) return;
+      raceBet = Math.max(10, raceBet + Number(btn.dataset.amt));
+      $("race-bet-display").textContent = "$" + raceBet.toLocaleString();
+    });
+  });
+  $("btn-race-allin").addEventListener("click", () => {
+    if (cyclePhase !== "PREP" || myBetConfirmed) return;
+    raceBet = Math.max(10, myUser.money);
+    $("race-bet-display").textContent = "$" + raceBet.toLocaleString();
+  });
+  $("btn-race-reset").addEventListener("click", () => {
+    if (cyclePhase !== "PREP" || myBetConfirmed) return;
+    raceBet = 10;
+    $("race-bet-display").textContent = "$10";
+  });
+  $("btn-confirm-bet").addEventListener("click", () => {
+    if (!selectedHorseId) { toast("먼저 말을 선택해주세요.", "error"); return; }
+    socket.emit("race:bet", { horseId: selectedHorseId, amount: raceBet }, (res) => {
+      if (!res.ok) { toast(res.error, "error"); return; }
+      myBetConfirmed = { horseId: res.horseId, amount: res.amount };
+      myUser.money = res.money;
+      updateHeader();
+      $("btn-confirm-bet").style.display = "none";
+      $("btn-cancel-bet").style.display = "";
+      toast(`베팅 완료: ${laneAssignment[selectedHorseId]}번에 $${res.amount.toLocaleString()}`);
+    });
+  });
+  $("btn-cancel-bet").addEventListener("click", () => {
+    socket.emit("race:cancelBet", {}, (res) => {
+      if (!res.ok) { toast(res.error, "error"); return; }
+      myBetConfirmed = null;
+      myUser.money = res.money;
+      updateHeader();
+      $("btn-confirm-bet").style.display = "";
+      $("btn-cancel-bet").style.display = "none";
+      toast("베팅을 취소했습니다.");
+    });
+  });
+
+  // 타이머 (클라이언트 로컬 카운트다운, phaseEndsAt 기준)
+  setInterval(() => {
+    if (!phaseEndsAt) return;
+    const remain = Math.max(0, Math.ceil((phaseEndsAt - Date.now()) / 1000));
+    const label = cyclePhase === "PREP" ? "마감까지" : (cyclePhase === "RESULT" ? "다음 경기까지" : "");
+    $("cycle-timer").textContent = (cyclePhase === "RACING" || remain <= 0) ? "" : `${label} ${remain}초`;
+  }, 500);
+
+  // ================= 시장 =================
+  function renderAgencyPanel() {
+    $("worker-owned-badge").textContent = `현재 고용 인원: ${myUser.workerCount || 0} / 5`;
+    $("btn-buy-worker").disabled = (myUser.workerCount || 0) >= 5;
+    $("btn-buy-worker").textContent = (myUser.workerCount || 0) >= 5 ? "정원 초과" : "고용하기";
+  }
+  function renderHaruPanel() {
+    $("rose-owned-badge").style.display = myUser.haruRose ? "" : "none";
+    $("btn-buy-rose").style.display = myUser.haruRose ? "none" : "";
+  }
+  $("btn-buy-worker").addEventListener("click", () => {
+    socket.emit("shop:buyWorker", {}, (res) => {
+      if (!res.ok) { toast(res.error, "error"); return; }
+      myUser = res.user;
+      updateHeader();
+      toast("👷 알바생을 고용했습니다!");
+    });
+  });
+  $("btn-buy-rose").addEventListener("click", () => {
+    socket.emit("shop:buyRose", {}, (res) => {
+      if (!res.ok) { toast(res.error, "error"); return; }
+      myUser = res.user;
+      updateHeader();
+      toast("🌹 누군가의 장미를 구매했습니다!");
+    });
+  });
+
+  socket.on("worker:income", (data) => {
+    myUser.money = data.money;
+    updateHeader();
+    toast(`👷 알바생이 쓰레기통에서 $${data.gain.toLocaleString()} 발견!`);
+  });
+
+  // ================= 쓰레기통 =================
+  function addTrashLog(text, cls) {
+    const log = $("trash-log");
+    const div = document.createElement("div");
+    div.className = "log-entry" + (cls ? " " + cls : "");
+    div.textContent = text;
+    log.prepend(div);
+  }
+  $("btn-search-trash").addEventListener("click", () => {
+    const icon = $("trash-icon");
+    icon.classList.remove("shake");
+    void icon.offsetWidth;
+    icon.classList.add("shake");
+    socket.emit("trash:search", {}, (res) => {
+      if (!res.ok) { toast(res.error, "error"); return; }
+      addTrashLog(res.message, res.type);
+      myUser.money = res.money;
+      updateHeader();
+    });
+  });
+
+})();
+
+</script>
+</body>
+</html>
