@@ -26,6 +26,12 @@ const RACE_TITLES = {
   "뉴마켓": "2000기니", "두바이": "두바이 월드컵", "홍콩": "홍콩컵"
 };
 
+// 실제 존재하는 그레이드(등급) 경주들을 그대로 반영
+const RACE_GRADES = {
+  "서울": "GI", "교토": "GI", "도쿄": "GI", "파리": "GI",
+  "뉴마켓": "GI", "두바이": "GI", "홍콩": "GI"
+};
+
 const VENUE_COURSE_SHAPE = {
   "서울": "oval", "교토": "technical", "도쿄": "long_straight", "파리": "technical",
   "뉴마켓": "long_straight", "두바이": "oval", "홍콩": "technical"
@@ -280,7 +286,7 @@ function buildLoseReasons(h, currentRace) {
 
 module.exports = {
   PREP_SECONDS, RESULT_SECONDS, TICK_MS, TARGET_TICKS, FINISH_PCT,
-  VENUES, RACE_TITLES, VENUE_COURSE_SHAPE, WEATHERS, DISTANCES,
+  VENUES, RACE_TITLES, RACE_GRADES, VENUE_COURSE_SHAPE, WEATHERS, DISTANCES,
   STAT_WEIGHTS, STYLE_PHASE, HORSES,
   aptitudeMod, getDistanceCategory, distanceCategoryLabel, getTrackCondition,
   conditionMod, conditionStars, applyTitleEffects, buildAdjustedStats,

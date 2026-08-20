@@ -106,13 +106,31 @@ body { background-color: var(--bg-color); color: var(--text-main); }
   background: linear-gradient(135deg, #3a2f0a, #1a1a0d); border: 1px solid var(--accent-color);
   border-radius: 10px; transition: max-height 0.4s ease, opacity 0.4s ease, margin 0.4s ease; margin-bottom: 0;
 }
-.race-title-banner.show { max-height: 80px; opacity: 1; margin-bottom: 12px; padding: 14px 10px; }
+.race-title-banner.show { max-height: 100px; opacity: 1; margin-bottom: 12px; padding: 16px 10px; }
+.race-title-banner .rt-grade { display: inline-block; background: var(--accent-color); color: #241a00; font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 20px; margin-bottom: 6px; letter-spacing: 1px; }
 .race-title-banner .rt-sub { font-size: 12px; color: var(--text-muted); margin-bottom: 3px; letter-spacing: 1px; }
-.race-title-banner .rt-main { font-size: 22px; font-weight: 800; color: var(--accent-color); letter-spacing: 1px; }
+.race-title-banner .rt-main { font-size: 24px; font-weight: 800; color: var(--accent-color); letter-spacing: 1px; }
+
+/* 경기 시작 시 전체 화면에 뜨는 오버레이 배너 (우마무스메 스타일 경주명 연출) */
+.race-start-overlay {
+  position: fixed; inset: 0; z-index: 1500; display: flex; align-items: center; justify-content: center;
+  background: rgba(4,5,8,0.72); opacity: 0; pointer-events: none; transition: opacity 0.35s ease;
+}
+.race-start-overlay.show { opacity: 1; }
+.race-start-overlay-card { text-align: center; animation: rso-pop 0.5s ease; }
+.race-start-overlay-card .rso-grade { display: inline-block; background: var(--accent-color); color: #241a00; font-size: 13px; font-weight: 800; padding: 4px 16px; border-radius: 20px; margin-bottom: 14px; letter-spacing: 2px; }
+.race-start-overlay-card .rso-sub { font-size: 15px; color: #cfd3e0; margin-bottom: 8px; letter-spacing: 3px; }
+.race-start-overlay-card .rso-main { font-size: 42px; font-weight: 900; color: #fff; letter-spacing: 3px; text-shadow: 0 0 24px rgba(255,215,0,0.55); }
+.race-start-overlay-card .rso-info { margin-top: 12px; font-size: 13px; color: var(--text-muted); }
+@keyframes rso-pop { from { transform: scale(0.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
 .track-box {
-  position: relative; background: radial-gradient(ellipse at center, #16321f 0%, #0d1a10 100%);
-  border: 1px solid #274430; border-radius: 12px; padding: 14px 20px; margin-bottom: 12px; min-height: 260px;
+  position: relative; border-radius: 12px; padding: 14px 20px; margin-bottom: 12px; min-height: 260px;
+  transition: background 0.4s ease, border-color 0.4s ease;
+  background: radial-gradient(ellipse at center, #16321f 0%, #0d1a10 100%); border: 1px solid #274430;
+}
+.track-box.dirt {
+  background: radial-gradient(ellipse at center, #4a3420 0%, #241a0f 100%); border: 1px solid #5a4128;
 }
 .track-finish-line {
   position: absolute; top: 10px; bottom: 10px; right: 40px; width: 3px;
@@ -122,11 +140,17 @@ body { background-color: var(--bg-color); color: var(--text-main); }
 .track-lane { position: relative; height: 36px; background: rgba(255,255,255,0.03); border-radius: 6px; }
 .track-lane-num { position: absolute; left: 6px; top: 50%; transform: translateY(-50%); font-size: 10px; color: var(--text-muted); font-weight: 700; }
 .track-horse {
-  position: absolute; top: 50%; transform: translate(0, -50%); left: 24px; font-size: 20px; transition: left 0.85s linear;
-  filter: drop-shadow(0 1px 1.5px rgba(0,0,0,0.6));
+  position: absolute; top: 50%; left: 24px; font-size: 20px; transition: left 0.85s linear;
+  transform: translateY(-50%) scaleX(-1); /* 말 이모지가 원래 왼쪽을 보고 있어서 진행방향(오른쪽)에 맞게 좌우반전 */
 }
-.track-horse.winner { filter: drop-shadow(0 0 6px var(--accent-color)); }
-.track-horse.bet-pick::after { content: "★"; position: absolute; top: -12px; left: 4px; color: #ff5a5a; font-size: 11px; }
+.track-horse-inner { position: relative; display: inline-block; filter: drop-shadow(0 1px 1.5px rgba(0,0,0,0.6)); }
+.track-horse-num {
+  position: absolute; top: -13px; left: 50%; transform: translateX(-50%) scaleX(-1); /* 부모가 반전되어 있어 숫자는 다시 반전해서 정방향 표시 */
+  background: #14151f; color: var(--accent-color); border: 1px solid #3f4460; border-radius: 5px;
+  font-size: 9px; font-weight: 800; padding: 0 3px; line-height: 13px;
+}
+.track-horse.winner .track-horse-inner { filter: drop-shadow(0 0 6px var(--accent-color)); }
+.track-horse.bet-pick .track-horse-inner::after { content: "★"; position: absolute; top: -12px; right: -2px; color: #ff5a5a; font-size: 11px; transform: scaleX(-1); }
 
 .course-standings { background: #10121a; border: 1px solid var(--border-color); border-radius: 10px; padding: 10px 14px; margin-bottom: 12px; font-size: 12px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px 10px; }
 .standing-row { display: flex; justify-content: space-between; color: var(--text-muted); }
@@ -392,6 +416,8 @@ body { background-color: var(--bg-color); color: var(--text-main); }
     </div>
   </div>
 
+  <div id="race-start-overlay" class="race-start-overlay"></div>
+
   <div id="toast-container" class="toast-container"></div>
 
   <script src="/socket.io/socket.io.js"></script>
@@ -607,9 +633,22 @@ body { background-color: var(--bg-color); color: var(--text-main); }
     setCyclePhaseTag("RACING");
     $("cycle-timer").textContent = "";
     const banner = $("race-title-banner");
-    banner.innerHTML = `<div class="rt-sub">${data.venueName} · ${data.distance}m</div><div class="rt-main">제 ${data.raceNumber}회 「${data.raceTitle}」</div>`;
+    banner.innerHTML = `<div class="rt-grade">${data.grade || "GI"}</div><div class="rt-sub">${data.venueName} · ${data.distance}m</div><div class="rt-main">제 ${data.raceNumber}회 「${data.raceTitle}」</div>`;
     banner.classList.add("show");
-    setTimeout(() => banner.classList.remove("show"), 2800);
+    setTimeout(() => banner.classList.remove("show"), 3200);
+
+    // 우마무스메 스타일 경주명 오버레이 (경기 시작 시 화면 전체에 잠깐 표시)
+    const overlay = $("race-start-overlay");
+    overlay.innerHTML = `
+      <div class="race-start-overlay-card">
+        <div class="rso-grade">${data.grade || "GI"}</div>
+        <div class="rso-sub">제 ${data.raceNumber}회</div>
+        <div class="rso-main">${data.raceTitle}</div>
+        <div class="rso-info">${data.venueName} · ${data.trackType === "turf" ? "잔디" : "더트"} ${data.distance}m</div>
+      </div>`;
+    overlay.classList.add("show");
+    setTimeout(() => overlay.classList.remove("show"), 3200);
+
     renderHorseCards();
   });
 
@@ -636,6 +675,9 @@ body { background-color: var(--bg-color); color: var(--text-main); }
     phaseEndsAt = data.phaseEndsAt;
     setCyclePhaseTag("RESULT");
     laneAssignment = data.laneAssignment;
+
+    // 등수대로 결승선을 넘은 최종 위치로 강제 정렬 (틱 유실로 인한 어긋남 방지)
+    if (data.horsePositions) applyPositions(data.horsePositions);
 
     document.querySelectorAll(".track-horse").forEach(el => el.classList.remove("winner"));
     const winnerEl = document.querySelector(`.track-horse[data-id="${data.winnerId}"]`);
@@ -696,6 +738,9 @@ body { background-color: var(--bg-color); color: var(--text-main); }
       <div>트랙 상태<b>${r.trackCondition}</b></div>
       <div>경기 특징<b style="font-weight:600;">${r.venue.desc}</b></div>
     `;
+    // 더트/잔디에 따라 트랙 배경 테마 전환
+    $("track-box").classList.toggle("dirt", r.trackType === "dirt");
+    $("track-box").classList.toggle("turf", r.trackType === "turf");
   }
 
   function renderTrackLanes() {
@@ -706,7 +751,7 @@ body { background-color: var(--bg-color); color: var(--text-main); }
       const laneDiv = document.createElement("div");
       laneDiv.className = "track-lane";
       laneDiv.id = "lane-" + lane;
-      laneDiv.innerHTML = `<span class="track-lane-num">${lane}</span><div class="track-horse" data-id="${h.id}">🐎</div>`;
+      laneDiv.innerHTML = `<span class="track-lane-num">${lane}</span><div class="track-horse" data-id="${h.id}"><span class="track-horse-inner">🐎<span class="track-horse-num">${lane}</span></span></div>`;
       box.appendChild(laneDiv);
     });
   }

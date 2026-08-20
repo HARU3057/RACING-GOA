@@ -126,15 +126,18 @@ async function run(io, store, onlineUsers) {
     state.fieldHorses.forEach(h => { bettorsByHorse[h.id] = 0; });
     for (const bet of state.bets.values()) bettorsByHorse[bet.horseId] = (bettorsByHorse[bet.horseId] || 0) + 1;
 
+    const grade = engine.RACE_GRADES[state.currentRace.venue.name] || "GI";
     const raceTitle = engine.RACE_TITLES[state.currentRace.venue.name] || "그랑프리";
     io.emit("race:banner", {
       raceNumber: state.raceNumber,
       raceTitle,
+      grade,
       venueName: state.currentRace.venue.name,
+      trackType: state.currentRace.trackType,
       distance: state.currentRace.distance,
       bettorsByHorse
     });
-    await sleep(3000);
+    await sleep(3200);
 
     const targetTicks = engine.TARGET_TICKS[state.currentRace.distanceCategory];
     let ticks = 0;
@@ -177,6 +180,18 @@ async function run(io, store, onlineUsers) {
     const winnerId = finalRanking[0];
     const winnerHorse = state.fieldHorses.find(h => h.id === winnerId);
 
+    // 마지막 틱에서 캡에 걸려 못 끝낸 말이 있어도, 결과 화면에서는 등수 순서대로
+    // 전원이 결승선을 넘은 모습으로 정렬해서 보여준다 (시각적 어긋남 방지)
+    finalRanking.forEach((id, idx) => {
+      state.horsePositions[id] = Math.max(0, 100 - idx * 0.9);
+    });
+    io.emit("race:tick", {
+      ticks: -1,
+      horsePositions: state.horsePositions,
+      leaderId: winnerId,
+      rankingIds: finalRanking
+    });
+
     finalRanking.forEach((id, idx) => {
       const h = engine.HORSES.find(x => x.id === id);
       h.recentForm = [idx + 1, ...h.recentForm].slice(0, 5);
@@ -188,6 +203,7 @@ async function run(io, store, onlineUsers) {
       raceNumber: state.raceNumber,
       finalRanking,
       winnerId,
+      horsePositions: state.horsePositions,
       laneAssignment: state.laneAssignment,
       oddsList: state.currentRace.oddsList,
       winReasons: engine.buildWinReasons(winnerHorse, state.currentRace),
