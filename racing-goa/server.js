@@ -44,25 +44,35 @@ function isNicknameValid(nickname) {
   return trimmed.length >= 1 && trimmed.length <= 12 && !/[<>]/.test(trimmed);
 }
 
+function isPasswordValid(password) {
+  return typeof password === "string" && password.length >= 4 && password.length <= 64;
+}
+
 io.on("connection", (socket) => {
   let currentToken = null;
 
   socket.emit("chat:history", chatHistory);
   socket.emit("race:snapshot", raceLoop.publicRaceSnapshot());
 
-  socket.on("auth:nickname", async (data) => {
+  // 회원가입: 닉네임+비밀번호로 새 계정 생성
+  socket.on("auth:signup", async (data) => {
     try {
       const nickname = (data && data.nickname || "").trim();
+      const password = (data && data.password) || "";
       if (!isNicknameValid(nickname)) {
         socket.emit("auth:error", { message: "닉네임은 1~12자, 특수문자(<,>) 제외로 입력해주세요." });
         return;
       }
-      const existing = await store.getUserByNickname(nickname);
-      if (existing) {
-        socket.emit("auth:error", { message: "이미 사용 중인 닉네임입니다. 계정이 있다면 복구 코드로 로그인해주세요." });
+      if (!isPasswordValid(password)) {
+        socket.emit("auth:error", { message: "비밀번호는 4~64자로 입력해주세요." });
         return;
       }
-      const user = await store.createUser(nickname);
+      const existing = await store.getUserByNickname(nickname);
+      if (existing) {
+        socket.emit("auth:error", { message: "이미 사용 중인 닉네임입니다. 계정이 있다면 로그인해주세요." });
+        return;
+      }
+      const user = await store.createUser(nickname, password);
       currentToken = user.token;
       socketToToken.set(socket.id, user.token);
       onlineUsers.set(user.token, { socketId: socket.id, nickname: user.nickname });
@@ -70,16 +80,42 @@ io.on("connection", (socket) => {
       io.emit("chat:system", { text: `${user.nickname}님이 입장했습니다.` });
     } catch (e) {
       console.error(e);
+      socket.emit("auth:error", { message: "서버 오류로 회원가입에 실패했습니다." });
+    }
+  });
+
+  // 로그인: 닉네임+비밀번호로 기존 계정 접속
+  socket.on("auth:login", async (data) => {
+    try {
+      const nickname = (data && data.nickname || "").trim();
+      const password = (data && data.password) || "";
+      const user = await store.verifyPassword(nickname, password);
+      if (!user) {
+        socket.emit("auth:error", { message: "닉네임 또는 비밀번호가 올바르지 않습니다." });
+        return;
+      }
+      currentToken = user.token;
+      socketToToken.set(socket.id, user.token);
+      onlineUsers.set(user.token, { socketId: socket.id, nickname: user.nickname });
+      socket.emit("auth:ok", { token: user.token, user: publicUser(user) });
+
+      const myBet = raceLoop.state.bets.get(user.token);
+      if (myBet) socket.emit("race:myBet", myBet);
+
+      io.emit("chat:system", { text: `${user.nickname}님이 접속했습니다.` });
+    } catch (e) {
+      console.error(e);
       socket.emit("auth:error", { message: "서버 오류로 로그인에 실패했습니다." });
     }
   });
 
+  // 같은 브라우저 자동 재접속 (localStorage에 저장된 토큰으로)
   socket.on("auth:token", async (data) => {
     try {
       const token = data && data.token;
       const user = await store.getUserByToken(token);
       if (!user) {
-        socket.emit("auth:error", { message: "복구 코드가 올바르지 않습니다." });
+        socket.emit("auth:error", { message: "자동 로그인 정보가 유효하지 않습니다. 다시 로그인해주세요." });
         return;
       }
       currentToken = user.token;

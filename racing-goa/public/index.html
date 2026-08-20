@@ -38,6 +38,9 @@ body { background-color: var(--bg-color); color: var(--text-main); }
   padding: 12px; color: var(--text-main); font-size: 14px; margin-bottom: 10px;
 }
 .modal-divider { text-align: center; color: var(--text-muted); font-size: 12px; margin: 16px 0; }
+.login-tabs { display: flex; gap: 6px; margin-bottom: 16px; background: #0f1119; border-radius: 10px; padding: 4px; }
+.login-tab-btn { flex: 1; background: none; border: none; color: var(--text-muted); font-weight: 700; font-size: 13px; padding: 9px 0; border-radius: 8px; cursor: pointer; }
+.login-tab-btn.active { background: #262a3a; color: var(--text-main); }
 .modal-error { color: #ff8888; font-size: 12px; margin-top: 10px; min-height: 16px; }
 
 .btn { border: none; border-radius: 10px; padding: 12px 16px; font-size: 14px; font-weight: 700; cursor: pointer; width: 100%; }
@@ -223,32 +226,28 @@ body { background-color: var(--bg-color); color: var(--text-main); }
       <div class="modal-title">🏇 RACING GOA</div>
       <div class="modal-sub">모두가 같은 경마를 함께 보는 공용 경마장입니다.</div>
 
-      <div id="login-new">
-        <label class="modal-label">닉네임으로 입장</label>
-        <input id="nickname-input" class="modal-input" maxlength="12" placeholder="닉네임 입력 (1~12자)">
-        <button class="btn btn-main" id="btn-join">입장하기</button>
+      <div class="login-tabs">
+        <button class="login-tab-btn active" id="tab-login">로그인</button>
+        <button class="login-tab-btn" id="tab-signup">회원가입</button>
       </div>
 
-      <div class="modal-divider">또는</div>
+      <div id="login-pane">
+        <label class="modal-label">닉네임</label>
+        <input id="login-nickname-input" class="modal-input" maxlength="12" placeholder="닉네임">
+        <label class="modal-label">비밀번호</label>
+        <input id="login-password-input" type="password" class="modal-input" placeholder="비밀번호">
+        <button class="btn btn-main" id="btn-login">로그인</button>
+      </div>
 
-      <div id="login-recover">
-        <label class="modal-label">복구 코드로 재접속 (기존 계정)</label>
-        <input id="recovery-input" class="modal-input" placeholder="복구 코드 붙여넣기">
-        <button class="btn btn-sub" id="btn-recover">복구 코드로 로그인</button>
+      <div id="signup-pane" style="display:none;">
+        <label class="modal-label">닉네임 (1~12자)</label>
+        <input id="signup-nickname-input" class="modal-input" maxlength="12" placeholder="사용할 닉네임">
+        <label class="modal-label">비밀번호 (4자 이상)</label>
+        <input id="signup-password-input" type="password" class="modal-input" placeholder="사용할 비밀번호">
+        <button class="btn btn-main" id="btn-signup">회원가입 후 입장</button>
       </div>
 
       <div id="login-error" class="modal-error"></div>
-    </div>
-  </div>
-
-  <!-- 복구 코드 안내 모달 (신규 가입 직후 1회 표시) -->
-  <div id="recovery-modal" class="modal-overlay" style="display:none;">
-    <div class="modal-box">
-      <div class="modal-title">🔑 복구 코드를 저장하세요</div>
-      <div class="modal-sub">이 코드가 있어야 다른 브라우저/기기에서 같은 계정으로 접속할 수 있습니다.<br>이 브라우저에는 자동 저장되었습니다.</div>
-      <input id="recovery-code-display" class="modal-input" readonly>
-      <button class="btn btn-main" id="btn-recovery-copy">복사하기</button>
-      <button class="btn btn-sub" id="btn-recovery-close">확인, 시작하기</button>
     </div>
   </div>
 
@@ -261,7 +260,7 @@ body { background-color: var(--bg-color); color: var(--text-main); }
         <div class="stat-chip"><span class="stat-label">닉네임</span><span class="stat-value" id="hdr-nickname">-</span></div>
         <div class="stat-chip"><span class="stat-label">소지금</span><span class="stat-value money" id="hdr-money">$0</span></div>
         <div class="stat-chip" id="hdr-rose-chip" style="display:none;"><span class="stat-value">🌹 장미 보유</span></div>
-        <button class="btn-mini" id="btn-show-recovery">내 복구코드</button>
+        <button class="btn-mini" id="btn-logout">로그아웃</button>
       </div>
     </header>
 
@@ -434,25 +433,45 @@ body { background-color: var(--bg-color); color: var(--text-main); }
     }
   }
 
-  $("btn-join").addEventListener("click", () => {
-    const nickname = $("nickname-input").value.trim();
-    if (!nickname) return;
-    socket.emit("auth:nickname", { nickname });
+  // 로그인/회원가입 탭 전환
+  $("tab-login").addEventListener("click", () => {
+    $("tab-login").classList.add("active");
+    $("tab-signup").classList.remove("active");
+    $("login-pane").style.display = "";
+    $("signup-pane").style.display = "none";
+    $("login-error").textContent = "";
   });
-  $("nickname-input").addEventListener("keydown", (e) => { if (e.key === "Enter") $("btn-join").click(); });
+  $("tab-signup").addEventListener("click", () => {
+    $("tab-signup").classList.add("active");
+    $("tab-login").classList.remove("active");
+    $("signup-pane").style.display = "";
+    $("login-pane").style.display = "none";
+    $("login-error").textContent = "";
+  });
 
-  $("btn-recover").addEventListener("click", () => {
-    const token = $("recovery-input").value.trim();
-    if (!token) return;
-    socket.emit("auth:token", { token });
-  });
-  $("recovery-input").addEventListener("keydown", (e) => { if (e.key === "Enter") $("btn-recover").click(); });
+  function doLogin() {
+    const nickname = $("login-nickname-input").value.trim();
+    const password = $("login-password-input").value;
+    if (!nickname || !password) { $("login-error").textContent = "닉네임과 비밀번호를 입력해주세요."; return; }
+    socket.emit("auth:login", { nickname, password });
+  }
+  function doSignup() {
+    const nickname = $("signup-nickname-input").value.trim();
+    const password = $("signup-password-input").value;
+    if (!nickname || !password) { $("login-error").textContent = "닉네임과 비밀번호를 입력해주세요."; return; }
+    socket.emit("auth:signup", { nickname, password });
+  }
+  $("btn-login").addEventListener("click", doLogin);
+  $("btn-signup").addEventListener("click", doSignup);
+  $("login-password-input").addEventListener("keydown", (e) => { if (e.key === "Enter") doLogin(); });
+  $("login-nickname-input").addEventListener("keydown", (e) => { if (e.key === "Enter") doLogin(); });
+  $("signup-password-input").addEventListener("keydown", (e) => { if (e.key === "Enter") doSignup(); });
+  $("signup-nickname-input").addEventListener("keydown", (e) => { if (e.key === "Enter") doSignup(); });
 
   socket.on("auth:error", (data) => {
     $("login-error").textContent = data.message || "로그인에 실패했습니다.";
   });
 
-  let isNewSignup = false;
   socket.on("auth:ok", (data) => {
     myToken = data.token;
     localStorage.setItem("racingGoaToken", myToken);
@@ -460,25 +479,11 @@ body { background-color: var(--bg-color); color: var(--text-main); }
     $("login-modal").style.display = "none";
     $("app").style.display = "flex";
     updateHeader();
-    if (isNewSignup) {
-      $("recovery-code-display").value = myToken;
-      $("recovery-modal").style.display = "flex";
-      isNewSignup = false;
-    }
   });
 
-  // nickname 제출 시 신규가입 여부 표시용 플래그 세팅
-  $("btn-join").addEventListener("click", () => { isNewSignup = true; });
-
-  $("btn-recovery-copy").addEventListener("click", () => {
-    $("recovery-code-display").select();
-    document.execCommand("copy");
-    toast("복구 코드를 복사했습니다.");
-  });
-  $("btn-recovery-close").addEventListener("click", () => { $("recovery-modal").style.display = "none"; });
-  $("btn-show-recovery").addEventListener("click", () => {
-    $("recovery-code-display").value = myToken || "";
-    $("recovery-modal").style.display = "flex";
+  $("btn-logout").addEventListener("click", () => {
+    localStorage.removeItem("racingGoaToken");
+    location.reload();
   });
 
   function updateHeader() {

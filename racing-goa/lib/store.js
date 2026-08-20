@@ -10,6 +10,7 @@
 const path = require("path");
 const fs = require("fs");
 const { v4: uuidv4 } = require("uuid");
+const bcrypt = require("bcryptjs");
 
 const MONGODB_URI = process.env.MONGODB_URI || "";
 const USE_MONGO = !!MONGODB_URI;
@@ -27,6 +28,7 @@ function initMongo() {
   const userSchema = new mongoose.Schema({
     token: { type: String, unique: true, required: true, index: true },
     nickname: { type: String, unique: true, required: true, index: true },
+    passwordHash: { type: String, required: true },
     money: { type: Number, default: DEFAULTS.money },
     haruRose: { type: Boolean, default: DEFAULTS.haruRose },
     workerCount: { type: Number, default: DEFAULTS.workerCount }
@@ -87,16 +89,32 @@ function toPlain(u) {
   };
 }
 
-async function createUser(nickname) {
+async function createUser(nickname, password) {
   const token = uuidv4();
+  const passwordHash = bcrypt.hashSync(password, 10);
   if (UseMongoActive()) {
-    const doc = await UserModel.create({ token, nickname, ...DEFAULTS });
+    const doc = await UserModel.create({ token, nickname, passwordHash, ...DEFAULTS });
     return toPlain(doc);
   }
-  const user = { token, nickname, ...DEFAULTS };
+  const user = { token, nickname, passwordHash, ...DEFAULTS };
   jsonUsers[token] = user;
   scheduleSaveJson();
   return { ...user };
+}
+
+// 닉네임+비밀번호로 로그인. 성공 시 유저 정보(공개 필드만) 반환, 실패 시 null
+async function verifyPassword(nickname, password) {
+  if (!nickname || !password) return null;
+  let raw;
+  if (UseMongoActive()) {
+    raw = await UserModel.findOne({ nickname });
+  } else {
+    raw = Object.values(jsonUsers).find(u => u.nickname === nickname);
+  }
+  if (!raw || !raw.passwordHash) return null;
+  const ok = bcrypt.compareSync(password, raw.passwordHash);
+  if (!ok) return null;
+  return toPlain(raw);
 }
 
 async function getUserByToken(token) {
@@ -158,6 +176,6 @@ function storageMode() {
 }
 
 module.exports = {
-  init, createUser, getUserByToken, getUserByNickname, updateUser, incMoney,
+  init, createUser, verifyPassword, getUserByToken, getUserByNickname, updateUser, incMoney,
   getAllUsersWithWorkers, storageMode
 };
