@@ -54,6 +54,10 @@ function publicRaceSnapshot() {
   };
 }
 
+function betsSnapshotArray() {
+  return [...state.bets.entries()].map(([token, b]) => ({ token, nickname: b.nickname, horseId: b.horseId, amount: b.amount }));
+}
+
 // ---- 베팅 처리 (PREP 단계에서만 가능, 소켓 핸들러에서 호출) ----
 async function placeBet(store, token, nickname, horseId, amount) {
   if (state.cyclePhase !== "PREP") return { ok: false, error: "지금은 베팅할 수 없습니다 (마감됨)." };
@@ -72,6 +76,8 @@ async function placeBet(store, token, nickname, horseId, amount) {
   const delta = refund - amount; // 이전 베팅 환불하고 새 베팅만큼 차감
   const updated = await store.incMoney(token, delta);
   state.bets.set(token, { nickname, horseId, amount });
+  // 서버가 경주 도중 죽어도 환불할 수 있도록 매번 베팅 내역을 저장해둔다
+  await store.savePendingBets(state.raceNumber, betsSnapshotArray());
   return { ok: true, money: updated.money, horseId, amount };
 }
 
@@ -81,7 +87,23 @@ async function cancelBet(store, token) {
   if (!prev) return { ok: false, error: "베팅 내역이 없습니다." };
   const updated = await store.incMoney(token, prev.amount);
   state.bets.delete(token);
+  await store.savePendingBets(state.raceNumber, betsSnapshotArray());
   return { ok: true, money: updated.money };
+}
+
+// 서버 기동 시 1회 호출: 이전 세션에서 정산되지 못한 채 남은 베팅이 있으면 전액 환불한다
+async function recoverOrphanedBets(store, io, onlineUsers) {
+  const pending = await store.getPendingBets();
+  if (!pending || !pending.bets || pending.bets.length === 0) return;
+  console.log(`[raceLoop] 정산되지 않은 이전 베팅 ${pending.bets.length}건 발견, 전액 환불합니다.`);
+  for (const bet of pending.bets) {
+    const updated = await store.incMoney(bet.token, bet.amount);
+    if (!updated) continue;
+    const info = onlineUsers.get(bet.token);
+    const message = `⚠️ 서버 업데이트로 진행 중이던 경기가 초기화되어, 베팅했던 $${bet.amount.toLocaleString()}를 환불해드렸습니다.`;
+    if (info) io.to(info.socketId).emit("race:payout", { rank: null, refunded: true, amount: bet.amount, payout: bet.amount, message, money: updated.money });
+  }
+  await store.clearPendingBets();
 }
 
 // ---- 메인 루프 ----
@@ -252,8 +274,11 @@ async function run(io, store, onlineUsers) {
       });
     }
 
+    // 이번 경기 정산이 전부 끝났으니, 서버 재시작 시 환불 대상이 아니도록 기록을 지운다
+    await store.clearPendingBets();
+
     await sleep(engine.RESULT_SECONDS * 1000);
   }
 }
 
-module.exports = { state, run, placeBet, cancelBet, publicRaceSnapshot };
+module.exports = { state, run, placeBet, cancelBet, publicRaceSnapshot, recoverOrphanedBets };

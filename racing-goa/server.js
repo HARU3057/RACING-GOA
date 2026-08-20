@@ -25,6 +25,10 @@ const io = new Server(server, {
   cors: { origin: "*" }
 });
 
+// 서버가 (재배포 등으로) 새로 켜질 때마다 바뀌는 값 -> 접속 중이던 클라이언트가
+// 재연결됐을 때 이 값이 달라지면 "서버가 업데이트됐다"는 뜻이므로 새로고침을 안내한다.
+const SERVER_BOOT_ID = Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 8);
+
 // token -> { socketId, nickname }
 const onlineUsers = new Map();
 // socket.id -> token
@@ -51,6 +55,7 @@ function isPasswordValid(password) {
 io.on("connection", (socket) => {
   let currentToken = null;
 
+  socket.emit("server:version", { bootId: SERVER_BOOT_ID });
   socket.emit("chat:history", chatHistory);
   socket.emit("race:snapshot", raceLoop.publicRaceSnapshot());
 
@@ -247,8 +252,9 @@ setInterval(async () => {
   }
 }, WORKER_INTERVAL_MS);
 
-store.init().then(() => {
+store.init().then(async () => {
   console.log(`[store] 저장 방식: ${store.storageMode()}`);
+  await raceLoop.recoverOrphanedBets(store, io, onlineUsers);
   server.listen(PORT, () => {
     console.log(`RACING GOA 서버 실행중 — http://localhost:${PORT}`);
   });
@@ -256,3 +262,13 @@ store.init().then(() => {
     console.error("[raceLoop] 치명적 오류:", err);
   });
 });
+
+// Render 등이 재배포/재시작 시 보내는 정상 종료 신호를 받으면, 저장 대기 중이던
+// 데이터를 즉시 디스크에 flush하고 종료한다 (JSON 파일 모드에서 데이터 유실 방지)
+function gracefulShutdown(signal) {
+  console.log(`[server] ${signal} 수신, 저장 flush 후 종료합니다.`);
+  store.flushSync();
+  process.exit(0);
+}
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));

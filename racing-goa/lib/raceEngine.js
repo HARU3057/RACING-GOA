@@ -64,7 +64,7 @@ const STYLE_PHASE = {
 
 const HORSES = [
   { id: 1, name: "미스터 파크", gender: "수컷", age: 4, origin: "한국", style: "선행형",
-    stats: { SPEED: 80, ACCELERATION: 76, STAMINA: 78, POWER: 70, CORNERING: 75, START: 78, SPRINT: 58, CONSISTENCY: 78 },
+    stats: { SPEED: 77, ACCELERATION: 73, STAMINA: 75, POWER: 67, CORNERING: 72, START: 75, SPRINT: 55, CONSISTENCY: 75 },
     weakness: "결정적인 한 방(막판 스퍼트)이 약함 — SPRINT 능력치가 전 출전마 중 최하위권",
     turfGrade: "B", dirtGrade: "C", title: { name: "무너지지 않는 철마" }, special: "condition_resist",
     preferredDistance: 2000, recentForm: [3, 2, 1, 4, 5] },
@@ -79,7 +79,7 @@ const HORSES = [
     turfGrade: "A", dirtGrade: "A", title: { name: "폭풍을 가르는 자" }, special: "rain_boost",
     preferredDistance: 1600, recentForm: [5, 6, 2, 5, 1] },
   { id: 4, name: "실버 크라운", gender: "수컷", age: 3, origin: "영국", style: "도주형",
-    stats: { SPEED: 90, ACCELERATION: 86, STAMINA: 60, POWER: 68, CORNERING: 70, START: 92, SPRINT: 65, CONSISTENCY: 68 },
+    stats: { SPEED: 90, ACCELERATION: 86, STAMINA: 67, POWER: 68, CORNERING: 70, START: 92, SPRINT: 71, CONSISTENCY: 73 },
     weakness: "장거리에서는 후반에 급격히 무너짐",
     turfGrade: "B", dirtGrade: "B", title: { name: "초반의 섬광" }, special: "early_burst",
     preferredDistance: 1200, recentForm: [6, 1, 4, 3, 6] },
@@ -89,7 +89,7 @@ const HORSES = [
     turfGrade: "A", dirtGrade: "C", title: { name: "마지막 200m의 악마" }, special: "final_sprint",
     preferredDistance: 2000, recentForm: [2, 5, 3, 6, 4] },
   { id: 6, name: "토카이 테이오", gender: "수컷", age: 4, origin: "일본", style: "도주형",
-    stats: { SPEED: 83, ACCELERATION: 80, STAMINA: 78, POWER: 88, CORNERING: 74, START: 80, SPRINT: 70, CONSISTENCY: 72 },
+    stats: { SPEED: 85, ACCELERATION: 84, STAMINA: 81, POWER: 88, CORNERING: 78, START: 80, SPRINT: 76, CONSISTENCY: 75 },
     weakness: "잔디 & 맑은 날씨에서는 위력이 반감",
     turfGrade: "C", dirtGrade: "S", title: { name: "불량 트랙 전문가" }, special: "mud_specialist",
     preferredDistance: 1800, recentForm: [4, 3, 5, 1, 2] },
@@ -99,7 +99,7 @@ const HORSES = [
     turfGrade: "S", dirtGrade: "C", title: { name: "괴짜 명마" }, special: "erratic_genius",
     preferredDistance: 3000, recentForm: [1, 6, 1, 5, 2] },
   { id: 8, name: "스페셜 위크", gender: "수컷", age: 4, origin: "일본", style: "선행형",
-    stats: { SPEED: 86, ACCELERATION: 83, STAMINA: 88, POWER: 78, CORNERING: 80, START: 75, SPRINT: 85, CONSISTENCY: 82 },
+    stats: { SPEED: 80, ACCELERATION: 77, STAMINA: 82, POWER: 73, CORNERING: 75, START: 70, SPRINT: 79, CONSISTENCY: 77 },
     weakness: "더트에서는 약하고, 단거리 적성도 낮음",
     turfGrade: "S", dirtGrade: "D", title: { name: "정상의 지배자" }, special: "distance_versatile",
     preferredDistance: 2400, recentForm: [1, 2, 1, 3, 2] },
@@ -109,7 +109,7 @@ const HORSES = [
     turfGrade: "S", dirtGrade: "C", title: { name: "천마의 일격" }, special: "sprint_specialist",
     preferredDistance: 1200, recentForm: [2, 1, 3, 1, 4] },
   { id: 10, name: "메지로 맥퀸", gender: "수컷", age: 6, origin: "일본", style: "선행형",
-    stats: { SPEED: 78, ACCELERATION: 72, STAMINA: 95, POWER: 80, CORNERING: 82, START: 68, SPRINT: 65, CONSISTENCY: 85 },
+    stats: { SPEED: 76, ACCELERATION: 70, STAMINA: 91, POWER: 78, CORNERING: 80, START: 67, SPRINT: 63, CONSISTENCY: 82 },
     weakness: "단거리에서는 스피드 경쟁에서 확실히 밀림",
     turfGrade: "S", dirtGrade: "D", title: { name: "장거리의 귀공자" }, special: "long_distance_master",
     preferredDistance: 3000, recentForm: [1, 1, 2, 1, 3] },
@@ -177,13 +177,13 @@ function applyTitleEffects(h, race, s, positionPct) {
       if (["무거움", "매우 무거움", "젖음", "진흙"].includes(race.trackCondition)) s.POWER *= 1.35;
       break;
     case "distance_versatile":
-      if (race.distanceCategory === "middle" || race.distanceCategory === "long") { for (const k in s) s[k] *= 1.10; }
+      if (race.distanceCategory === "middle" || race.distanceCategory === "long") { for (const k in s) s[k] *= 1.05; }
       break;
     case "sprint_specialist":
       if (race.distanceCategory === "sprint") { s.SPRINT *= 1.30; s.ACCELERATION *= 1.15; }
       break;
     case "long_distance_master":
-      if (race.distanceCategory === "long") { for (const k in s) s[k] *= 1.12; }
+      if (race.distanceCategory === "long") { for (const k in s) s[k] *= 1.08; }
       break;
     case "long_closer":
       if (race.distanceCategory === "long" && positionPct >= 75) { s.SPRINT *= 1.35; }
@@ -199,7 +199,7 @@ function buildAdjustedStats(h, race, positionPct) {
   else { const m = aptitudeMod(h.dirtGrade); s.POWER *= 1 + m; s.ACCELERATION *= 1 + m * 0.6; }
   applyTitleEffects(h, race, s, positionPct);
   let condMod = conditionMod(h.condition);
-  if (h.special === "condition_resist" && condMod < 1) condMod = 1 - (1 - condMod) * 0.45;
+  if (h.special === "condition_resist" && condMod < 1) condMod = 1 - (1 - condMod) * 0.65;
   for (const k in s) s[k] *= condMod;
   return s;
 }
