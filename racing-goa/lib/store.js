@@ -18,7 +18,8 @@ const USE_MONGO = !!MONGODB_URI;
 const DEFAULTS = {
   money: 0,
   haruRose: false,
-  workerCount: 0
+  workerCount: 0,
+  isAdmin: false
 };
 
 let mongoose, UserModel, PendingBetsModel;
@@ -31,7 +32,8 @@ function initMongo() {
     passwordHash: { type: String, required: true },
     money: { type: Number, default: DEFAULTS.money },
     haruRose: { type: Boolean, default: DEFAULTS.haruRose },
-    workerCount: { type: Number, default: DEFAULTS.workerCount }
+    workerCount: { type: Number, default: DEFAULTS.workerCount },
+    isAdmin: { type: Boolean, default: DEFAULTS.isAdmin }
   }, { timestamps: true });
   UserModel = mongoose.models.RacingGoaUser || mongoose.model("RacingGoaUser", userSchema);
 
@@ -113,7 +115,8 @@ function toPlain(u) {
     nickname: u.nickname,
     money: u.money,
     haruRose: u.haruRose,
-    workerCount: u.workerCount
+    workerCount: u.workerCount,
+    isAdmin: !!u.isAdmin
   };
 }
 

@@ -230,6 +230,10 @@ body { background-color: var(--bg-color); color: var(--text-main); }
 .chat-msg.system { color: var(--text-muted); font-size: 12px; font-style: italic; }
 .chat-msg.result-win { color: var(--accent-color); font-weight: 700; }
 .chat-msg.result-lose { color: #ff9d9d; }
+.chat-msg.announce {
+  background: linear-gradient(135deg, #3a2f0a, #1a1a0d); border: 1px solid var(--accent-color);
+  border-radius: 8px; padding: 8px 10px; color: var(--accent-color); font-weight: 700; font-size: 13px;
+}
 .chat-input-row { display: flex; gap: 6px; padding: 10px 14px; border-top: 1px solid var(--border-color); }
 .chat-input { flex: 1; background: #0f1119; border: 1px solid var(--border-color); border-radius: 8px; padding: 8px 10px; color: var(--text-main); font-size: 13px; }
 
@@ -246,7 +250,7 @@ body { background-color: var(--bg-color); color: var(--text-main); }
   padding: 5px 14px; font-weight: 800; font-size: 12px; cursor: pointer;
 }
 .update-banner button:hover { filter: brightness(0.95); }
-.toast { background: #1f2230; border: 1px solid var(--border-color); border-radius: 10px; padding: 12px 16px; font-size: 13px; box-shadow: 0 8px 20px rgba(0,0,0,0.5); animation: toast-in 0.2s ease; max-width: 320px; }
+.toast { background: #1f2230; border: 1px solid var(--border-color); border-radius: 10px; padding: 12px 16px; font-size: 13px; box-shadow: 0 8px 20px rgba(0,0,0,0.5); animation: toast-in 0.2s ease; max-width: 320px; white-space: pre-line; }
 .toast.win { border-color: var(--accent-color); color: var(--accent-color); font-weight: 700; }
 .toast.error { border-color: #e74c3c; color: #ff9d9d; }
 @keyframes toast-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
@@ -302,6 +306,7 @@ body { background-color: var(--bg-color); color: var(--text-main); }
         <div class="stat-chip"><span class="stat-label">닉네임</span><span class="stat-value" id="hdr-nickname">-</span></div>
         <div class="stat-chip"><span class="stat-label">소지금</span><span class="stat-value money" id="hdr-money">$0</span></div>
         <div class="stat-chip" id="hdr-rose-chip" style="display:none;"><span class="stat-value">🌹 장미 보유</span></div>
+        <div class="stat-chip" id="hdr-admin-chip" style="display:none;"><span class="stat-value">🛠️ 관리자</span></div>
         <button class="btn-mini" id="btn-logout">로그아웃</button>
       </div>
     </header>
@@ -384,8 +389,8 @@ body { background-color: var(--bg-color); color: var(--text-main); }
             <div class="shop-dir-info"><h3>인력사무소</h3><p>알바생을 고용해 쓰레기통에서 자동으로 돈을 법니다.</p></div>
           </div>
           <div class="shop-dir-card" data-market="haru-panel">
-            <div class="shop-dir-icon">🌹</div>
-            <div class="shop-dir-info"><h3>HARU'S SHOP</h3><p>누군가의 장미 — 경마 2위 배당 페널티 제거.</p></div>
+            <div class="shop-dir-icon">🛒</div>
+            <div class="shop-dir-info"><h3>HARU'S SHOP</h3><p>돈으로 살 수 있는 특별한 아이템을 파는 상점입니다.</p></div>
           </div>
 
           <div id="agency-panel" class="market-panel" style="display:none;">
@@ -555,6 +560,7 @@ body { background-color: var(--bg-color); color: var(--text-main); }
     $("hdr-nickname").textContent = myUser.nickname || "-";
     $("hdr-money").textContent = "$" + (myUser.money || 0).toLocaleString();
     $("hdr-rose-chip").style.display = myUser.haruRose ? "" : "none";
+    $("hdr-admin-chip").style.display = myUser.isAdmin ? "" : "none";
     renderAgencyPanel();
     renderHaruPanel();
   }
@@ -597,6 +603,23 @@ body { background-color: var(--bg-color); color: var(--text-main); }
   socket.on("chat:result", (data) => {
     renderChatMessage({ result: true, kind: data.kind, text: data.text });
   });
+  socket.on("chat:announce", (data) => {
+    renderChatMessage({ announce: true, text: data.text });
+  });
+  // 명령어 실행 결과는 나에게만 보이는 로컬 안내 (서버로 전송되지 않음)
+  socket.on("admin:cmdResult", (data) => {
+    toast(data.message, data.ok ? "win" : "error");
+  });
+  socket.on("admin:moneyUpdate", (data) => {
+    myUser.money = data.money;
+    updateHeader();
+    toast(data.message, "win");
+  });
+  socket.on("admin:statusChanged", (data) => {
+    myUser.isAdmin = data.isAdmin;
+    updateHeader();
+    toast(data.message, data.isAdmin ? "win" : undefined);
+  });
   function renderChatMessage(msg) {
     const box = $("chat-messages");
     const div = document.createElement("div");
@@ -606,6 +629,9 @@ body { background-color: var(--bg-color); color: var(--text-main); }
     } else if (msg.result) {
       div.className = "chat-msg " + (msg.kind === "win" ? "result-win" : "result-lose");
       div.textContent = msg.text;
+    } else if (msg.announce) {
+      div.className = "chat-msg announce";
+      div.textContent = "📢 " + msg.text;
     } else {
       div.className = "chat-msg";
       div.innerHTML = `<span class="chat-nick">${escapeHtml(msg.nickname)}</span>${escapeHtml(msg.text)}`;

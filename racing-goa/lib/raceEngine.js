@@ -88,10 +88,10 @@ const HORSES = [
     weakness: "선두를 잡는 능력이 약함",
     turfGrade: "A", dirtGrade: "C", title: { name: "마지막 200m의 악마" }, special: "final_sprint",
     preferredDistance: 2000, recentForm: [2, 5, 3, 6, 4] },
-  { id: 6, name: "토카이 테이오", gender: "수컷", age: 4, origin: "일본", style: "도주형",
-    stats: { SPEED: 85, ACCELERATION: 84, STAMINA: 81, POWER: 88, CORNERING: 78, START: 80, SPRINT: 76, CONSISTENCY: 75 },
-    weakness: "잔디 & 맑은 날씨에서는 위력이 반감",
-    turfGrade: "C", dirtGrade: "S", title: { name: "불량 트랙 전문가" }, special: "mud_specialist",
+  { id: 6, name: "토카이 테이오", gender: "수컷", age: 4, origin: "일본", style: "선행형",
+    stats: { SPEED: 80, ACCELERATION: 80, STAMINA: 78, POWER: 82, CORNERING: 75, START: 76, SPRINT: 72, CONSISTENCY: 70 },
+    weakness: "더트에서는 적성이 크게 떨어짐 — 잔디 전문마",
+    turfGrade: "S", dirtGrade: "C", title: { name: "불량 트랙 전문가" }, special: "mud_specialist",
     preferredDistance: 1800, recentForm: [4, 3, 5, 1, 2] },
   { id: 7, name: "골드 쉽", gender: "수컷", age: 5, origin: "일본", style: "선입형",
     stats: { SPEED: 74, ACCELERATION: 70, STAMINA: 84, POWER: 82, CORNERING: 72, START: 62, SPRINT: 64, CONSISTENCY: 38 },
@@ -117,7 +117,22 @@ const HORSES = [
     stats: { SPEED: 81, ACCELERATION: 85, STAMINA: 84, POWER: 70, CORNERING: 79, START: 60, SPRINT: 91, CONSISTENCY: 74 },
     weakness: "출발이 느려서 초반 순위가 항상 낮음",
     turfGrade: "S", dirtGrade: "C", title: { name: "질풍의 마무리" }, special: "long_closer",
-    preferredDistance: 3000, recentForm: [3, 1, 4, 2, 1] }
+    preferredDistance: 3000, recentForm: [3, 1, 4, 2, 1] },
+  { id: 12, name: "메이쇼 도토", gender: "수컷", age: 5, origin: "일본", style: "도주형",
+    stats: { SPEED: 92, ACCELERATION: 86, STAMINA: 80, POWER: 82, CORNERING: 79, START: 92, SPRINT: 70, CONSISTENCY: 76 },
+    weakness: "장거리에서는 스태미나가 부족해 후반에 급격히 무너짐",
+    turfGrade: "A", dirtGrade: "C", title: { name: "불굴의 도전자" }, special: null,
+    preferredDistance: 2200, recentForm: [2, 4, 1, 3, 5] },
+  { id: 13, name: "오구리 캡", gender: "수컷", age: 6, origin: "일본", style: "추입형",
+    stats: { SPEED: 80, ACCELERATION: 79, STAMINA: 78, POWER: 76, CORNERING: 75, START: 68, SPRINT: 80, CONSISTENCY: 74 },
+    weakness: "나이가 많아 어린 말들과의 순수 스피드 경쟁에서는 살짝 밀림",
+    turfGrade: "S", dirtGrade: "B", title: { name: "회색의 전설" }, special: "legend_closer",
+    preferredDistance: 2000, recentForm: [1, 2, 1, 4, 1] },
+  { id: 14, name: "아그네스 타키온", gender: "수컷", age: 3, origin: "일본", style: "도주형",
+    stats: { SPEED: 92, ACCELERATION: 90, STAMINA: 62, POWER: 68, CORNERING: 78, START: 88, SPRINT: 78, CONSISTENCY: 62 },
+    weakness: "체력이 약해 장거리에서는 급격히 무너짐 (부상 경력)",
+    turfGrade: "S", dirtGrade: "D", title: { name: "질주하는 천재" }, special: "genius_speed",
+    preferredDistance: 1600, recentForm: [1, 3, 1, 6, 2] }
 ];
 
 function aptitudeMod(grade) {
@@ -187,6 +202,12 @@ function applyTitleEffects(h, race, s, positionPct) {
       break;
     case "long_closer":
       if (race.distanceCategory === "long" && positionPct >= 75) { s.SPRINT *= 1.35; }
+      break;
+    case "legend_closer":
+      if (positionPct >= 70) { s.SPRINT *= 1.28; s.ACCELERATION *= 1.12; }
+      break;
+    case "genius_speed":
+      if (race.distanceCategory === "mile") { s.SPEED *= 1.16; s.ACCELERATION *= 1.13; }
       break;
     default: break;
   }

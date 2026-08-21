@@ -15,6 +15,15 @@ const WORKER_MAX = 5;
 const WORKER_INTERVAL_MS = 8000;
 const HARU_ROSE_PRICE = 30000;
 
+// 첫 관리자가 되기 위한 비밀 키. Render 환경변수 ADMIN_SECRET으로 반드시 직접 설정하세요.
+// 설정을 안 하면 서버 시작할 때마다 무작위로 새로 만들어서 콘솔(로그)에 출력합니다.
+const ADMIN_SECRET = process.env.ADMIN_SECRET || (() => {
+  const generated = Math.random().toString(36).slice(2, 10);
+  console.log(`[admin] ADMIN_SECRET 환경변수가 없어서 임시 키를 생성했습니다: ${generated}`);
+  console.log(`[admin] 채팅창에 "/admin ${generated}" 을 입력하면 관리자가 됩니다. (서버 재시작하면 이 키는 바뀝니다 — Render 환경변수에 ADMIN_SECRET을 직접 설정하는 걸 추천합니다)`);
+  return generated;
+})();
+
 const PORT = process.env.PORT || 3000;
 
 const app = express();
@@ -39,7 +48,7 @@ const CHAT_MAX = 50;
 
 function publicUser(u) {
   if (!u) return null;
-  return { nickname: u.nickname, money: u.money, haruRose: u.haruRose, workerCount: u.workerCount };
+  return { nickname: u.nickname, money: u.money, haruRose: u.haruRose, workerCount: u.workerCount, isAdmin: !!u.isAdmin };
 }
 
 function isNicknameValid(nickname) {
@@ -50,6 +59,87 @@ function isNicknameValid(nickname) {
 
 function isPasswordValid(password) {
   return typeof password === "string" && password.length >= 4 && password.length <= 64;
+}
+
+async function handleAdminCommand(socket, token, rawText) {
+  const reply = (ok, message) => socket.emit("admin:cmdResult", { ok, message });
+
+  const parts = rawText.slice(1).trim().split(/\s+/);
+  const cmd = (parts[0] || "").toLowerCase();
+  const user = await store.getUserByToken(token);
+  if (!user) return reply(false, "로그인 정보를 찾을 수 없습니다.");
+
+  if (cmd === "admin") {
+    const secret = parts[1] || "";
+    if (!secret) return reply(false, "사용법: /admin 비밀키");
+    if (user.isAdmin) return reply(false, "이미 관리자입니다.");
+    if (secret !== ADMIN_SECRET) return reply(false, "비밀키가 올바르지 않습니다.");
+    await store.updateUser(token, { isAdmin: true });
+    console.log(`[admin] ${user.nickname}님이 관리자 권한을 획득했습니다.`);
+    return reply(true, "✅ 관리자 권한을 획득했습니다. /help 를 입력해보세요.");
+  }
+
+  if (cmd === "help") {
+    if (!user.isAdmin) return reply(true, "사용 가능한 명령어: /admin <비밀키>");
+    return reply(true,
+      "관리자 명령어:\n" +
+      "/money <닉네임> <금액>  - 소지금 지급(양수)/회수(음수)\n" +
+      "/op <닉네임>  - 관리자 권한 부여\n" +
+      "/deop <닉네임>  - 관리자 권한 회수\n" +
+      "/announce <메시지>  - 전체 공지 방송"
+    );
+  }
+
+  // 아래 명령어들은 관리자만 사용 가능
+  if (!user.isAdmin) return reply(false, "관리자 권한이 필요합니다. (/admin <비밀키>)");
+
+  if (cmd === "money") {
+    const targetNickname = parts[1];
+    const amount = Math.trunc(Number(parts[2]));
+    if (!targetNickname || !Number.isFinite(amount) || amount === 0) return reply(false, "사용법: /money <닉네임> <금액> (음수 가능)");
+    const target = await store.getUserByNickname(targetNickname);
+    if (!target) return reply(false, `"${targetNickname}" 닉네임의 유저를 찾을 수 없습니다.`);
+    const updated = await store.incMoney(target.token, amount);
+    reply(true, `💰 ${target.nickname}님의 소지금을 ${amount > 0 ? "+" : ""}${amount.toLocaleString()} 조정했습니다. (현재: $${updated.money.toLocaleString()})`);
+    const targetInfo = onlineUsers.get(target.token);
+    if (targetInfo) {
+      io.to(targetInfo.socketId).emit("admin:moneyUpdate", {
+        money: updated.money,
+        message: `🛠️ 관리자가 소지금을 ${amount > 0 ? "+" : ""}${amount.toLocaleString()} 조정했습니다.`
+      });
+    }
+    return;
+  }
+
+  if (cmd === "op" || cmd === "deop") {
+    const targetNickname = parts[1];
+    if (!targetNickname) return reply(false, `사용법: /${cmd} <닉네임>`);
+    const target = await store.getUserByNickname(targetNickname);
+    if (!target) return reply(false, `"${targetNickname}" 닉네임의 유저를 찾을 수 없습니다.`);
+    const makeAdmin = cmd === "op";
+    await store.updateUser(target.token, { isAdmin: makeAdmin });
+    reply(true, `${target.nickname}님을 ${makeAdmin ? "관리자로 지정" : "관리자에서 해제"}했습니다.`);
+    const targetInfo = onlineUsers.get(target.token);
+    if (targetInfo) {
+      io.to(targetInfo.socketId).emit("admin:statusChanged", {
+        isAdmin: makeAdmin,
+        message: makeAdmin ? "🛠️ 관리자 권한을 부여받았습니다." : "관리자 권한이 해제되었습니다."
+      });
+    }
+    return;
+  }
+
+  if (cmd === "announce") {
+    const message = rawText.slice(rawText.indexOf(" ") + 1).trim();
+    if (!message || message === "/announce") return reply(false, "사용법: /announce <메시지>");
+    const payload = { text: message, ts: Date.now() };
+    io.emit("chat:announce", payload);
+    chatHistory.push({ announce: true, text: message, ts: payload.ts });
+    if (chatHistory.length > CHAT_MAX) chatHistory.shift();
+    return reply(true, "📢 공지를 방송했습니다.");
+  }
+
+  return reply(false, `알 수 없는 명령어입니다: /${cmd}`);
 }
 
 io.on("connection", (socket) => {
@@ -139,12 +229,18 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("chat:send", (data) => {
+  socket.on("chat:send", async (data) => {
     if (!currentToken) return;
     const info = onlineUsers.get(currentToken);
     if (!info) return;
     const text = ((data && data.text) || "").toString().slice(0, 300).trim();
     if (!text) return;
+
+    if (text.startsWith("/")) {
+      await handleAdminCommand(socket, currentToken, text);
+      return;
+    }
+
     const msg = { nickname: info.nickname, text, ts: Date.now() };
     chatHistory.push(msg);
     if (chatHistory.length > CHAT_MAX) chatHistory.shift();
