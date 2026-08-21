@@ -56,15 +56,15 @@ const STAT_WEIGHTS = {
 };
 
 const STYLE_PHASE = {
-  "도주형": { early: 1.08, mid: 0.94, late: 0.70, staminaDrainMult: 1.55 },
-  "선행형": { early: 1.10, mid: 1.05, late: 0.95, staminaDrainMult: 1.1 },
-  "선입형": { early: 0.95, mid: 1.05, late: 1.10, staminaDrainMult: 0.95 },
-  "추입형": { early: 0.85, mid: 0.95, late: 1.25, staminaDrainMult: 0.8 }
+  "도주형": { early: 1.04, mid: 0.96, late: 0.80, staminaDrainMult: 1.20 },
+  "선행형": { early: 1.08, mid: 1.04, late: 0.97, staminaDrainMult: 1.06 },
+  "선입형": { early: 0.96, mid: 1.03, late: 1.08, staminaDrainMult: 0.97 },
+  "추입형": { early: 0.90, mid: 0.97, late: 1.26, staminaDrainMult: 0.86 }
 };
 
 const HORSES = [
   { id: 1, name: "미스터 파크", gender: "수컷", age: 4, origin: "한국", style: "선행형",
-    stats: { SPEED: 77, ACCELERATION: 73, STAMINA: 75, POWER: 67, CORNERING: 72, START: 75, SPRINT: 55, CONSISTENCY: 75 },
+    stats: { SPEED: 82, ACCELERATION: 78, STAMINA: 80, POWER: 72, CORNERING: 77, START: 80, SPRINT: 60, CONSISTENCY: 75 },
     weakness: "결정적인 한 방(막판 스퍼트)이 약함 — SPRINT 능력치가 전 출전마 중 최하위권",
     turfGrade: "B", dirtGrade: "C", title: { name: "무너지지 않는 철마" }, special: "condition_resist",
     preferredDistance: 2000, recentForm: [3, 2, 1, 4, 5] },
@@ -94,7 +94,7 @@ const HORSES = [
     turfGrade: "C", dirtGrade: "S", title: { name: "불량 트랙 전문가" }, special: "mud_specialist",
     preferredDistance: 1800, recentForm: [4, 3, 5, 1, 2] },
   { id: 7, name: "골드 쉽", gender: "수컷", age: 5, origin: "일본", style: "선입형",
-    stats: { SPEED: 79, ACCELERATION: 74, STAMINA: 92, POWER: 90, CORNERING: 76, START: 65, SPRINT: 68, CONSISTENCY: 40 },
+    stats: { SPEED: 74, ACCELERATION: 70, STAMINA: 84, POWER: 82, CORNERING: 72, START: 62, SPRINT: 64, CONSISTENCY: 38 },
     weakness: "경기마다 기복이 매우 심함 — 안정성이 전 출전마 중 최하위",
     turfGrade: "S", dirtGrade: "C", title: { name: "괴짜 명마" }, special: "erratic_genius",
     preferredDistance: 3000, recentForm: [1, 6, 1, 5, 2] },
@@ -109,7 +109,7 @@ const HORSES = [
     turfGrade: "S", dirtGrade: "C", title: { name: "천마의 일격" }, special: "sprint_specialist",
     preferredDistance: 1200, recentForm: [2, 1, 3, 1, 4] },
   { id: 10, name: "메지로 맥퀸", gender: "수컷", age: 6, origin: "일본", style: "선행형",
-    stats: { SPEED: 76, ACCELERATION: 70, STAMINA: 91, POWER: 78, CORNERING: 80, START: 67, SPRINT: 63, CONSISTENCY: 82 },
+    stats: { SPEED: 74, ACCELERATION: 68, STAMINA: 87, POWER: 75, CORNERING: 78, START: 65, SPRINT: 60, CONSISTENCY: 73 },
     weakness: "단거리에서는 스피드 경쟁에서 확실히 밀림",
     turfGrade: "S", dirtGrade: "D", title: { name: "장거리의 귀공자" }, special: "long_distance_master",
     preferredDistance: 3000, recentForm: [1, 1, 2, 1, 3] },
@@ -183,7 +183,7 @@ function applyTitleEffects(h, race, s, positionPct) {
       if (race.distanceCategory === "sprint") { s.SPRINT *= 1.30; s.ACCELERATION *= 1.15; }
       break;
     case "long_distance_master":
-      if (race.distanceCategory === "long") { for (const k in s) s[k] *= 1.08; }
+      if (race.distanceCategory === "long") { for (const k in s) s[k] *= 1.04; }
       break;
     case "long_closer":
       if (race.distanceCategory === "long" && positionPct >= 75) { s.SPRINT *= 1.35; }
@@ -192,11 +192,23 @@ function applyTitleEffects(h, race, s, positionPct) {
   }
 }
 
+// 선호 거리와 실제 경주 거리 차이에 따른 전체 능력치 보정 (잔디/더트 적성과 같은 방식)
+function distanceAptitudeMod(preferredDistance, raceDistance) {
+  const diff = Math.abs(preferredDistance - raceDistance);
+  if (diff <= 200) return 0.028;   // S급 적성
+  if (diff <= 500) return 0.013;   // A급 적성
+  if (diff <= 900) return 0;       // B급 적성 (중립)
+  if (diff <= 1400) return -0.018; // C급 적성
+  return -0.035;                   // D급 적성
+}
+
 function buildAdjustedStats(h, race, positionPct) {
   const s = { ...h.stats };
   for (const k in (race.venue.mod || {})) s[k] = (s[k] || 0) * (1 + race.venue.mod[k]);
   if (race.trackType === "turf") { const m = aptitudeMod(h.turfGrade); s.SPEED *= 1 + m; s.STAMINA *= 1 + m * 0.6; }
   else { const m = aptitudeMod(h.dirtGrade); s.POWER *= 1 + m; s.ACCELERATION *= 1 + m * 0.6; }
+  const dm = distanceAptitudeMod(h.preferredDistance, race.distance);
+  for (const k in s) s[k] *= (1 + dm);
   applyTitleEffects(h, race, s, positionPct);
   let condMod = conditionMod(h.condition);
   if (h.special === "condition_resist" && condMod < 1) condMod = 1 - (1 - condMod) * 0.65;
@@ -234,8 +246,9 @@ function computeTickIncrement(h, race, phase, positionPct, staminaLeft, luck) {
   composite *= styleMult;
   if (staminaLeft < 30) composite *= 0.85;
   if (staminaLeft < 15) composite *= 0.7;
-  const tickVarBase = 0.045 + (race.weather.variance || 0) * 0.35;
-  const tickVariance = tickVarBase * (1 - s.CONSISTENCY / 100 * 0.4);
+  const tickVarBase = 0.03 + (race.weather.variance || 0) * 0.28;
+  let tickVariance = tickVarBase * (1 - s.CONSISTENCY / 100 * 0.4);
+  if (h.special === "erratic_genius") tickVariance *= 2.4; // 골드쉽: 매 구간마다 기복이 심함
   const tickJitter = 1 + (Math.random() * 2 - 1) * tickVariance;
   return composite * luck * tickJitter;
 }
@@ -244,9 +257,9 @@ function rollRaceLuck(fieldHorses, race) {
   const luck = {};
   fieldHorses.forEach(h => {
     const s = buildAdjustedStats(h, race, 50);
-    const varBase = 0.22 + (race.weather.variance || 0);
+    const varBase = 0.13 + (race.weather.variance || 0) * 0.7;
     let variance = varBase * (1 - s.CONSISTENCY / 100 * 0.45);
-    if (h.special === "erratic_genius") variance *= 2;
+    if (h.special === "erratic_genius") variance *= 3.6; // 골드쉽: 그날 컨디션 자체가 극과 극
     luck[h.id] = 1 + (Math.random() * 2 - 1) * variance;
   });
   return luck;
@@ -288,7 +301,7 @@ module.exports = {
   PREP_SECONDS, RESULT_SECONDS, TICK_MS, TARGET_TICKS, FINISH_PCT,
   VENUES, RACE_TITLES, RACE_GRADES, VENUE_COURSE_SHAPE, WEATHERS, DISTANCES,
   STAT_WEIGHTS, STYLE_PHASE, HORSES,
-  aptitudeMod, getDistanceCategory, distanceCategoryLabel, getTrackCondition,
+  aptitudeMod, distanceAptitudeMod, getDistanceCategory, distanceCategoryLabel, getTrackCondition,
   conditionMod, conditionStars, applyTitleEffects, buildAdjustedStats,
   computeBaselineScore, computeOddsFromScores, computeTickIncrement,
   rollRaceLuck, updateStamina, buildWinReasons, buildLoseReasons

@@ -258,7 +258,7 @@ store.init().then(async () => {
   server.listen(PORT, () => {
     console.log(`RACING GOA 서버 실행중 — http://localhost:${PORT}`);
   });
-  raceLoop.run(io, store, onlineUsers).catch(err => {
+  raceLoop.run(io, store, onlineUsers, chatHistory, CHAT_MAX).catch(err => {
     console.error("[raceLoop] 치명적 오류:", err);
   });
 });

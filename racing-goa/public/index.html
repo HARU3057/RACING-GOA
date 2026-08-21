@@ -228,6 +228,8 @@ body { background-color: var(--bg-color); color: var(--text-main); }
 .chat-msg { margin-bottom: 10px; line-height: 1.4; }
 .chat-msg .chat-nick { font-weight: 800; color: var(--accent-color); margin-right: 6px; }
 .chat-msg.system { color: var(--text-muted); font-size: 12px; font-style: italic; }
+.chat-msg.result-win { color: var(--accent-color); font-weight: 700; }
+.chat-msg.result-lose { color: #ff9d9d; }
 .chat-input-row { display: flex; gap: 6px; padding: 10px 14px; border-top: 1px solid var(--border-color); }
 .chat-input { flex: 1; background: #0f1119; border: 1px solid var(--border-color); border-radius: 8px; padding: 8px 10px; color: var(--text-main); font-size: 13px; }
 
@@ -592,11 +594,17 @@ body { background-color: var(--bg-color); color: var(--text-main); }
   socket.on("chat:system", (data) => {
     renderChatMessage({ system: true, text: data.text });
   });
+  socket.on("chat:result", (data) => {
+    renderChatMessage({ result: true, kind: data.kind, text: data.text });
+  });
   function renderChatMessage(msg) {
     const box = $("chat-messages");
     const div = document.createElement("div");
     if (msg.system) {
       div.className = "chat-msg system";
+      div.textContent = msg.text;
+    } else if (msg.result) {
+      div.className = "chat-msg " + (msg.kind === "win" ? "result-win" : "result-lose");
       div.textContent = msg.text;
     } else {
       div.className = "chat-msg";

@@ -107,7 +107,7 @@ async function recoverOrphanedBets(store, io, onlineUsers) {
 }
 
 // ---- 메인 루프 ----
-async function run(io, store, onlineUsers) {
+async function run(io, store, onlineUsers, chatHistory, chatMax) {
   const emitToToken = (token, event, payload) => {
     const info = onlineUsers.get(token);
     if (info) io.to(info.socketId).emit(event, payload);
@@ -233,6 +233,7 @@ async function run(io, store, onlineUsers) {
     });
 
     // 베팅한 유저별로 개별 정산 (오프라인이어도 store에는 반영됨)
+    const publicResults = []; // 채팅에 공개할 적중/낙첨 결과 (등수 순으로 정렬해서 나중에 broadcast)
     for (const [token, bet] of state.bets.entries()) {
       const betHorse = state.fieldHorses.find(h => h.id === bet.horseId);
       const myRank = finalRanking.indexOf(bet.horseId) + 1;
@@ -272,7 +273,32 @@ async function run(io, store, onlineUsers) {
         message,
         money: updatedUser ? updatedUser.money : null
       });
+
+      // 채팅에 공개로 띄울 결과 (적중/낙첨 + 손익 금액)
+      const net = payout - bet.amount;
+      const nickname = bet.nickname || "???";
+      const laneNum = state.laneAssignment[bet.horseId];
+      let publicText;
+      if (myRank === 1) {
+        publicText = `🏆 ${nickname}님 ${laneNum}번 ${betHorse.name} 우승 적중! +$${payout.toLocaleString()} (순이익 $${net.toLocaleString()})`;
+      } else if (myRank === 2 || myRank === 3) {
+        publicText = `🎖️ ${nickname}님 ${laneNum}번 ${betHorse.name} ${myRank}위 입상! +$${payout.toLocaleString()} (순이익 $${net.toLocaleString()})`;
+      } else {
+        publicText = `💸 ${nickname}님 ${laneNum}번 ${betHorse.name} 낙첨... -$${bet.amount.toLocaleString()}`;
+      }
+      publicResults.push({ rank: myRank, kind: payout > 0 ? "win" : "lose", text: publicText });
     }
+
+    // 적중자 먼저, 낙첨자 나중 순서로 채팅에 공개 (1등 맞춘 사람이 제일 먼저 보이게)
+    publicResults.sort((a, b) => a.rank - b.rank);
+    publicResults.forEach(r => {
+      const payload = { kind: r.kind, text: r.text };
+      io.emit("chat:result", payload);
+      if (chatHistory) {
+        chatHistory.push({ result: true, kind: r.kind, text: r.text, ts: Date.now() });
+        if (chatMax && chatHistory.length > chatMax) chatHistory.shift();
+      }
+    });
 
     // 이번 경기 정산이 전부 끝났으니, 서버 재시작 시 환불 대상이 아니도록 기록을 지운다
     await store.clearPendingBets();
