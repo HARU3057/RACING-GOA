@@ -63,76 +63,104 @@ const STYLE_PHASE = {
 };
 
 const HORSES = [
-  { id: 1, name: "미스터 파크", gender: "수컷", age: 4, origin: "한국", style: "선행형",
+  { id: 1, name: "토카이 테이오", gender: "수컷", age: 4, origin: "일본", style: "선행형",
+    stats: { SPEED: 82, ACCELERATION: 80, STAMINA: 80, POWER: 84, CORNERING: 76, START: 78, SPRINT: 74, CONSISTENCY: 72 },
+    weakness: "더트 적성이 낮아 더트 경기에서는 고전함",
+    turfGrade: "A", dirtGrade: "D",
+    distanceGrades: { sprint: "D", mile: "D", middle: "A", long: "B" },
+    title: { name: "불량 트랙 전문가" }, special: "mud_specialist",
+    recentForm: [4, 3, 5, 1, 2] },
+  { id: 2, name: "골드 쉽", gender: "수컷", age: 5, origin: "일본", style: "추입형",
+    stats: { SPEED: 74, ACCELERATION: 70, STAMINA: 84, POWER: 82, CORNERING: 72, START: 62, SPRINT: 66, CONSISTENCY: 38 },
+    weakness: "경기마다 기복이 매우 심함 — 안정성이 전 출전마 중 최하위, 더트도 약함",
+    turfGrade: "A", dirtGrade: "D",
+    distanceGrades: { sprint: "D", mile: "C", middle: "A", long: "A" },
+    title: { name: "괴짜 명마" }, special: "erratic_genius",
+    recentForm: [1, 6, 1, 5, 2] },
+  { id: 3, name: "스페셜 위크", gender: "수컷", age: 4, origin: "일본", style: "선행형",
+    stats: { SPEED: 80, ACCELERATION: 77, STAMINA: 82, POWER: 73, CORNERING: 75, START: 70, SPRINT: 79, CONSISTENCY: 77 },
+    weakness: "더트 적성이 낮음, 단거리도 약함",
+    turfGrade: "A", dirtGrade: "D",
+    distanceGrades: { sprint: "D", mile: "C", middle: "A", long: "A" },
+    title: { name: "정상의 지배자" }, special: "distance_versatile",
+    recentForm: [1, 2, 1, 3, 2] },
+  { id: 4, name: "듀란달", gender: "수컷", age: 5, origin: "일본", style: "추입형",
+    stats: { SPEED: 88, ACCELERATION: 90, STAMINA: 55, POWER: 62, CORNERING: 84, START: 70, SPRINT: 93, CONSISTENCY: 78 },
+    weakness: "장거리 적성이 낮음 — 스태미나가 매우 낮아 중장거리에서 급격히 무너짐",
+    turfGrade: "A", dirtGrade: "D",
+    distanceGrades: { sprint: "A", mile: "A", middle: "D", long: "D" },
+    title: { name: "천마의 일격" }, special: "sprint_specialist",
+    recentForm: [2, 1, 3, 1, 4] },
+  { id: 5, name: "메지로 맥퀸", gender: "수컷", age: 6, origin: "일본", style: "선행형",
+    stats: { SPEED: 74, ACCELERATION: 68, STAMINA: 87, POWER: 75, CORNERING: 78, START: 65, SPRINT: 60, CONSISTENCY: 73 },
+    weakness: "단거리 적성이 낮음 — 단거리 스피드 경쟁에서 확실히 밀림",
+    turfGrade: "A", dirtGrade: "D",
+    distanceGrades: { sprint: "D", mile: "D", middle: "A", long: "A" },
+    title: { name: "장거리의 귀공자" }, special: "long_distance_master",
+    recentForm: [1, 1, 2, 1, 3] },
+  { id: 6, name: "맨해튼 카페", gender: "수컷", age: 4, origin: "일본", style: "선입형",
+    stats: { SPEED: 81, ACCELERATION: 83, STAMINA: 84, POWER: 72, CORNERING: 79, START: 65, SPRINT: 86, CONSISTENCY: 76 },
+    weakness: "더트 적성이 낮음, 단거리·마일도 약함",
+    turfGrade: "A", dirtGrade: "D",
+    distanceGrades: { sprint: "D", mile: "D", middle: "B", long: "A" },
+    title: { name: "질풍의 마무리" }, special: "long_closer",
+    recentForm: [3, 1, 4, 2, 1] },
+  { id: 7, name: "메이쇼 도토", gender: "수컷", age: 5, origin: "일본", style: "선행형",
+    stats: { SPEED: 88, ACCELERATION: 85, STAMINA: 80, POWER: 82, CORNERING: 78, START: 88, SPRINT: 68, CONSISTENCY: 76 },
+    weakness: "더트 적성이 낮음, 단거리·마일도 약함",
+    turfGrade: "A", dirtGrade: "D",
+    distanceGrades: { sprint: "D", mile: "D", middle: "A", long: "A" },
+    title: { name: "불굴의 도전자" }, special: null,
+    recentForm: [2, 4, 1, 3, 5] },
+  { id: 8, name: "오구리 캡", gender: "수컷", age: 6, origin: "일본", style: "선입형",
+    stats: { SPEED: 82, ACCELERATION: 81, STAMINA: 80, POWER: 78, CORNERING: 78, START: 70, SPRINT: 82, CONSISTENCY: 76 },
+    weakness: "단거리에서는 다소 약한 편",
+    turfGrade: "A", dirtGrade: "B",
+    distanceGrades: { sprint: "D", mile: "A", middle: "A", long: "B" },
+    title: { name: "회색의 전설" }, special: "legend_closer",
+    recentForm: [1, 2, 1, 4, 1] },
+  { id: 9, name: "아그네스 타키온", gender: "수컷", age: 3, origin: "일본", style: "선행형",
+    stats: { SPEED: 90, ACCELERATION: 88, STAMINA: 68, POWER: 70, CORNERING: 76, START: 84, SPRINT: 74, CONSISTENCY: 62 },
+    weakness: "마일 적성이 낮은 편, 더트도 약함",
+    turfGrade: "A", dirtGrade: "D",
+    distanceGrades: { sprint: "D", mile: "D", middle: "A", long: "B" },
+    title: { name: "질주하는 천재" }, special: "genius_speed",
+    recentForm: [1, 3, 1, 6, 2] },
+  { id: 10, name: "티엠 오페라 오", gender: "수컷", age: 5, origin: "일본", style: "선입형",
+    stats: { SPEED: 85, ACCELERATION: 82, STAMINA: 78, POWER: 76, CORNERING: 82, START: 66, SPRINT: 88, CONSISTENCY: 74 },
+    weakness: "단거리 적성이 낮음, 마일도 약함",
+    turfGrade: "A", dirtGrade: "D",
+    distanceGrades: { sprint: "D", mile: "D", middle: "A", long: "A" },
+    title: { name: "도쿄의 괴물" }, special: "tokyo_boost",
+    recentForm: [1, 4, 6, 2, 3] },
+  { id: 11, name: "미스터 파크", gender: "수컷", age: 4, origin: "한국", style: "선행형",
     stats: { SPEED: 82, ACCELERATION: 78, STAMINA: 80, POWER: 72, CORNERING: 77, START: 80, SPRINT: 60, CONSISTENCY: 75 },
     weakness: "결정적인 한 방(막판 스퍼트)이 약함 — SPRINT 능력치가 전 출전마 중 최하위권",
-    turfGrade: "B", dirtGrade: "C", title: { name: "무너지지 않는 철마" }, special: "condition_resist",
-    preferredDistance: 2000, recentForm: [3, 2, 1, 4, 5] },
-  { id: 2, name: "티엠 오페라 오", gender: "수컷", age: 5, origin: "일본", style: "추입형",
-    stats: { SPEED: 85, ACCELERATION: 88, STAMINA: 72, POWER: 70, CORNERING: 82, START: 60, SPRINT: 95, CONSISTENCY: 70 },
-    weakness: "스타트가 느려 초반 순위가 낮음",
-    turfGrade: "S", dirtGrade: "C", title: { name: "도쿄의 괴물" }, special: "tokyo_boost",
-    preferredDistance: 2400, recentForm: [1, 4, 6, 2, 3] },
-  { id: 3, name: "하이페리", gender: "암컷", age: 4, origin: "영국", style: "선입형",
+    turfGrade: "B", dirtGrade: "C",
+    distanceGrades: { sprint: "B", mile: "A", middle: "S", long: "B" },
+    title: { name: "무너지지 않는 철마" }, special: "condition_resist",
+    recentForm: [3, 2, 1, 4, 5] },
+  { id: 12, name: "하이페리", gender: "암컷", age: 4, origin: "영국", style: "선입형",
     stats: { SPEED: 78, ACCELERATION: 75, STAMINA: 85, POWER: 72, CORNERING: 80, START: 70, SPRINT: 78, CONSISTENCY: 75 },
     weakness: "맑은 날씨에는 평범한 성적",
-    turfGrade: "A", dirtGrade: "A", title: { name: "폭풍을 가르는 자" }, special: "rain_boost",
-    preferredDistance: 1600, recentForm: [5, 6, 2, 5, 1] },
-  { id: 4, name: "실버 크라운", gender: "수컷", age: 3, origin: "영국", style: "도주형",
+    turfGrade: "A", dirtGrade: "A",
+    distanceGrades: { sprint: "A", mile: "S", middle: "A", long: "C" },
+    title: { name: "폭풍을 가르는 자" }, special: "rain_boost",
+    recentForm: [5, 6, 2, 5, 1] },
+  { id: 13, name: "실버 크라운", gender: "수컷", age: 3, origin: "영국", style: "도주형",
     stats: { SPEED: 90, ACCELERATION: 86, STAMINA: 67, POWER: 68, CORNERING: 70, START: 92, SPRINT: 71, CONSISTENCY: 73 },
     weakness: "장거리에서는 후반에 급격히 무너짐",
-    turfGrade: "B", dirtGrade: "B", title: { name: "초반의 섬광" }, special: "early_burst",
-    preferredDistance: 1200, recentForm: [6, 1, 4, 3, 6] },
-  { id: 5, name: "네이티브 싱 캡", gender: "암컷", age: 5, origin: "영국", style: "추입형",
+    turfGrade: "B", dirtGrade: "B",
+    distanceGrades: { sprint: "S", mile: "A", middle: "B", long: "D" },
+    title: { name: "초반의 섬광" }, special: "early_burst",
+    recentForm: [6, 1, 4, 3, 6] },
+  { id: 14, name: "네이티브 싱 캡", gender: "암컷", age: 5, origin: "영국", style: "추입형",
     stats: { SPEED: 80, ACCELERATION: 77, STAMINA: 82, POWER: 73, CORNERING: 78, START: 65, SPRINT: 90, CONSISTENCY: 80 },
     weakness: "선두를 잡는 능력이 약함",
-    turfGrade: "A", dirtGrade: "C", title: { name: "마지막 200m의 악마" }, special: "final_sprint",
-    preferredDistance: 2000, recentForm: [2, 5, 3, 6, 4] },
-  { id: 6, name: "토카이 테이오", gender: "수컷", age: 4, origin: "일본", style: "선행형",
-    stats: { SPEED: 80, ACCELERATION: 80, STAMINA: 78, POWER: 82, CORNERING: 75, START: 76, SPRINT: 72, CONSISTENCY: 70 },
-    weakness: "더트에서는 적성이 크게 떨어짐 — 잔디 전문마",
-    turfGrade: "S", dirtGrade: "C", title: { name: "불량 트랙 전문가" }, special: "mud_specialist",
-    preferredDistance: 1800, recentForm: [4, 3, 5, 1, 2] },
-  { id: 7, name: "골드 쉽", gender: "수컷", age: 5, origin: "일본", style: "선입형",
-    stats: { SPEED: 74, ACCELERATION: 70, STAMINA: 84, POWER: 82, CORNERING: 72, START: 62, SPRINT: 64, CONSISTENCY: 38 },
-    weakness: "경기마다 기복이 매우 심함 — 안정성이 전 출전마 중 최하위",
-    turfGrade: "S", dirtGrade: "C", title: { name: "괴짜 명마" }, special: "erratic_genius",
-    preferredDistance: 3000, recentForm: [1, 6, 1, 5, 2] },
-  { id: 8, name: "스페셜 위크", gender: "수컷", age: 4, origin: "일본", style: "선행형",
-    stats: { SPEED: 80, ACCELERATION: 77, STAMINA: 82, POWER: 73, CORNERING: 75, START: 70, SPRINT: 79, CONSISTENCY: 77 },
-    weakness: "더트에서는 약하고, 단거리 적성도 낮음",
-    turfGrade: "S", dirtGrade: "D", title: { name: "정상의 지배자" }, special: "distance_versatile",
-    preferredDistance: 2400, recentForm: [1, 2, 1, 3, 2] },
-  { id: 9, name: "듀란달", gender: "수컷", age: 5, origin: "일본", style: "추입형",
-    stats: { SPEED: 88, ACCELERATION: 90, STAMINA: 55, POWER: 62, CORNERING: 84, START: 70, SPRINT: 93, CONSISTENCY: 78 },
-    weakness: "장거리에서는 체력이 급격히 떨어짐 — 지구력이 매우 낮음",
-    turfGrade: "S", dirtGrade: "C", title: { name: "천마의 일격" }, special: "sprint_specialist",
-    preferredDistance: 1200, recentForm: [2, 1, 3, 1, 4] },
-  { id: 10, name: "메지로 맥퀸", gender: "수컷", age: 6, origin: "일본", style: "선행형",
-    stats: { SPEED: 74, ACCELERATION: 68, STAMINA: 87, POWER: 75, CORNERING: 78, START: 65, SPRINT: 60, CONSISTENCY: 73 },
-    weakness: "단거리에서는 스피드 경쟁에서 확실히 밀림",
-    turfGrade: "S", dirtGrade: "D", title: { name: "장거리의 귀공자" }, special: "long_distance_master",
-    preferredDistance: 3000, recentForm: [1, 1, 2, 1, 3] },
-  { id: 11, name: "맨해튼 카페", gender: "수컷", age: 4, origin: "일본", style: "추입형",
-    stats: { SPEED: 81, ACCELERATION: 85, STAMINA: 84, POWER: 70, CORNERING: 79, START: 60, SPRINT: 91, CONSISTENCY: 74 },
-    weakness: "출발이 느려서 초반 순위가 항상 낮음",
-    turfGrade: "S", dirtGrade: "C", title: { name: "질풍의 마무리" }, special: "long_closer",
-    preferredDistance: 3000, recentForm: [3, 1, 4, 2, 1] },
-  { id: 12, name: "메이쇼 도토", gender: "수컷", age: 5, origin: "일본", style: "도주형",
-    stats: { SPEED: 92, ACCELERATION: 86, STAMINA: 80, POWER: 82, CORNERING: 79, START: 92, SPRINT: 70, CONSISTENCY: 76 },
-    weakness: "장거리에서는 스태미나가 부족해 후반에 급격히 무너짐",
-    turfGrade: "A", dirtGrade: "C", title: { name: "불굴의 도전자" }, special: null,
-    preferredDistance: 2200, recentForm: [2, 4, 1, 3, 5] },
-  { id: 13, name: "오구리 캡", gender: "수컷", age: 6, origin: "일본", style: "추입형",
-    stats: { SPEED: 80, ACCELERATION: 79, STAMINA: 78, POWER: 76, CORNERING: 75, START: 68, SPRINT: 80, CONSISTENCY: 74 },
-    weakness: "나이가 많아 어린 말들과의 순수 스피드 경쟁에서는 살짝 밀림",
-    turfGrade: "S", dirtGrade: "B", title: { name: "회색의 전설" }, special: "legend_closer",
-    preferredDistance: 2000, recentForm: [1, 2, 1, 4, 1] },
-  { id: 14, name: "아그네스 타키온", gender: "수컷", age: 3, origin: "일본", style: "도주형",
-    stats: { SPEED: 92, ACCELERATION: 90, STAMINA: 62, POWER: 68, CORNERING: 78, START: 88, SPRINT: 78, CONSISTENCY: 62 },
-    weakness: "체력이 약해 장거리에서는 급격히 무너짐 (부상 경력)",
-    turfGrade: "S", dirtGrade: "D", title: { name: "질주하는 천재" }, special: "genius_speed",
-    preferredDistance: 1600, recentForm: [1, 3, 1, 6, 2] }
+    turfGrade: "A", dirtGrade: "C",
+    distanceGrades: { sprint: "B", mile: "A", middle: "S", long: "B" },
+    title: { name: "마지막 200m의 악마" }, special: "final_sprint",
+    recentForm: [2, 5, 3, 6, 4] }
 ];
 
 function aptitudeMod(grade) {
@@ -207,20 +235,10 @@ function applyTitleEffects(h, race, s, positionPct) {
       if (positionPct >= 70) { s.SPRINT *= 1.28; s.ACCELERATION *= 1.12; }
       break;
     case "genius_speed":
-      if (race.distanceCategory === "mile") { s.SPEED *= 1.16; s.ACCELERATION *= 1.13; }
+      if (race.distanceCategory === "middle") { s.SPEED *= 1.16; s.ACCELERATION *= 1.13; }
       break;
     default: break;
   }
-}
-
-// 선호 거리와 실제 경주 거리 차이에 따른 전체 능력치 보정 (잔디/더트 적성과 같은 방식)
-function distanceAptitudeMod(preferredDistance, raceDistance) {
-  const diff = Math.abs(preferredDistance - raceDistance);
-  if (diff <= 200) return 0.028;   // S급 적성
-  if (diff <= 500) return 0.013;   // A급 적성
-  if (diff <= 900) return 0;       // B급 적성 (중립)
-  if (diff <= 1400) return -0.018; // C급 적성
-  return -0.035;                   // D급 적성
 }
 
 function buildAdjustedStats(h, race, positionPct) {
@@ -228,7 +246,9 @@ function buildAdjustedStats(h, race, positionPct) {
   for (const k in (race.venue.mod || {})) s[k] = (s[k] || 0) * (1 + race.venue.mod[k]);
   if (race.trackType === "turf") { const m = aptitudeMod(h.turfGrade); s.SPEED *= 1 + m; s.STAMINA *= 1 + m * 0.6; }
   else { const m = aptitudeMod(h.dirtGrade); s.POWER *= 1 + m; s.ACCELERATION *= 1 + m * 0.6; }
-  const dm = distanceAptitudeMod(h.preferredDistance, race.distance);
+  // 실제 거리 적성 등급(단/마일/중/장) 기반 보정 — 적성 격차가 너무 크게 벌어지지 않도록 0.4배로 완화 적용
+  const distGrade = (h.distanceGrades && h.distanceGrades[race.distanceCategory]) || "C";
+  const dm = aptitudeMod(distGrade) * 0.4;
   for (const k in s) s[k] *= (1 + dm);
   applyTitleEffects(h, race, s, positionPct);
   let condMod = conditionMod(h.condition);
@@ -280,8 +300,21 @@ function rollRaceLuck(fieldHorses, race) {
     const s = buildAdjustedStats(h, race, 50);
     const varBase = 0.13 + (race.weather.variance || 0) * 0.7;
     let variance = varBase * (1 - s.CONSISTENCY / 100 * 0.45);
-    if (h.special === "erratic_genius") variance *= 3.6; // 골드쉽: 그날 컨디션 자체가 극과 극
-    luck[h.id] = 1 + (Math.random() * 2 - 1) * variance;
+    let raw;
+    if (h.special === "erratic_genius") {
+      // 골드쉽: 변동폭 자체는 여전히 크지만, "대박"(좋은 쪽)이 나올 확률은 줄이고
+      // 평타(0에 가까운 값)가 좀 더 자주 나오도록 좋은 쪽만 완만하게 압축한다.
+      // 나쁜 쪽(사고)은 그대로 균등분포 유지.
+      variance *= 3.6;
+      if (Math.random() < 0.5) {
+        raw = -Math.random(); // 나쁜 쪽: 그대로
+      } else {
+        raw = Math.pow(Math.random(), 1.6); // 좋은 쪽: 대박 확률 감소, 평타 쪽으로 압축
+      }
+    } else {
+      raw = Math.random() * 2 - 1;
+    }
+    luck[h.id] = 1 + raw * variance;
   });
   return luck;
 }
@@ -298,7 +331,8 @@ function buildWinReasons(h, currentRace) {
   const reasons = [];
   const grade = currentRace.trackType === "turf" ? h.turfGrade : h.dirtGrade;
   if (["S", "A"].includes(grade)) reasons.push(`${currentRace.trackType === "turf" ? "잔디" : "더트"} 적성 ${grade}`);
-  if (Math.abs(h.preferredDistance - currentRace.distance) <= 200) reasons.push(`선호 거리(${h.preferredDistance}m)와 근접`);
+  const distGrade = (h.distanceGrades && h.distanceGrades[currentRace.distanceCategory]) || "C";
+  if (["S", "A"].includes(distGrade)) reasons.push(`${distanceCategoryLabel(currentRace.distanceCategory)} 적성 ${distGrade}`);
   if (h.condition >= 80) reasons.push(`좋은 컨디션 (${conditionStars(h.condition)})`);
   if (h.special === "tokyo_boost" && currentRace.venue.name === "도쿄") reasons.push(`「${h.title.name}」 발동 (도쿄 경기장)`);
   if (h.special === "rain_boost" && (currentRace.weather.name === "비" || currentRace.weather.name === "폭우")) reasons.push(`「${h.title.name}」 발동 (${currentRace.weather.name})`);
@@ -311,8 +345,9 @@ function buildWinReasons(h, currentRace) {
 function buildLoseReasons(h, currentRace) {
   const reasons = [];
   const grade = currentRace.trackType === "turf" ? h.turfGrade : h.dirtGrade;
-  if (["D", "C"].includes(grade)) reasons.push(`${currentRace.trackType === "turf" ? "잔디" : "더트"} 적성 ${grade}로 불리`);
-  if (Math.abs(h.preferredDistance - currentRace.distance) > 600) reasons.push(`선호 거리(${h.preferredDistance}m)와 거리 차이가 큼`);
+  if (grade === "D") reasons.push(`${currentRace.trackType === "turf" ? "잔디" : "더트"} 적성 D로 불리`);
+  const distGrade = (h.distanceGrades && h.distanceGrades[currentRace.distanceCategory]) || "C";
+  if (distGrade === "D") reasons.push(`${distanceCategoryLabel(currentRace.distanceCategory)} 적성 D로 불리`);
   if (h.condition < 55) reasons.push(`컨디션 저조 (${conditionStars(h.condition)})`);
   reasons.push(h.weakness);
   return reasons.join(" · ");
@@ -322,7 +357,7 @@ module.exports = {
   PREP_SECONDS, RESULT_SECONDS, TICK_MS, TARGET_TICKS, FINISH_PCT,
   VENUES, RACE_TITLES, RACE_GRADES, VENUE_COURSE_SHAPE, WEATHERS, DISTANCES,
   STAT_WEIGHTS, STYLE_PHASE, HORSES,
-  aptitudeMod, distanceAptitudeMod, getDistanceCategory, distanceCategoryLabel, getTrackCondition,
+  aptitudeMod, getDistanceCategory, distanceCategoryLabel, getTrackCondition,
   conditionMod, conditionStars, applyTitleEffects, buildAdjustedStats,
   computeBaselineScore, computeOddsFromScores, computeTickIncrement,
   rollRaceLuck, updateStamina, buildWinReasons, buildLoseReasons

@@ -33,9 +33,33 @@ function getCurrentRankingIds() {
   }).map(h => h.id);
 }
 
-function selectRaceField() {
-  const shuffled = [...engine.HORSES].sort(() => Math.random() - 0.5);
-  state.fieldHorses = shuffled.slice(0, 6);
+// 이번 경기 조건(트랙/거리)에 적성이 잘 맞는 말일수록 더 자주 출전하도록
+// 가중치 기반으로 6마리를 뽑는다 (완전 랜덤은 아니지만, 안 맞는 말도 가끔은 나옴)
+function selectRaceField(trackType, distanceCategory) {
+  const pool = engine.HORSES.map(h => {
+    const trackGrade = trackType === "turf" ? h.turfGrade : h.dirtGrade;
+    const distGrade = (h.distanceGrades && h.distanceGrades[distanceCategory]) || "C";
+    const fit = engine.aptitudeMod(trackGrade) + engine.aptitudeMod(distGrade);
+    const weight = Math.exp(fit * 7); // 적성이 잘 맞을수록 더 자주 뽑히되, 너무 쏠리지 않게 완만하게
+    return { horse: h, weight };
+  });
+
+  const chosen = [];
+  const remaining = [...pool];
+  const pickCount = Math.min(6, remaining.length);
+  for (let i = 0; i < pickCount; i++) {
+    const totalWeight = remaining.reduce((sum, p) => sum + p.weight, 0);
+    let r = Math.random() * totalWeight;
+    let idx = 0;
+    for (; idx < remaining.length - 1; idx++) {
+      r -= remaining[idx].weight;
+      if (r <= 0) break;
+    }
+    chosen.push(remaining[idx].horse);
+    remaining.splice(idx, 1);
+  }
+
+  state.fieldHorses = chosen;
   state.laneAssignment = {};
   state.fieldHorses.forEach((h, i) => { state.laneAssignment[h.id] = i + 1; });
 }
@@ -118,8 +142,9 @@ async function run(io, store, onlineUsers, chatHistory, chatMax) {
     state.cyclePhase = "PREP";
     state.raceNumber++;
     state.bets = new Map();
-    selectRaceField();
 
+    // 경기 조건(경기장/트랙/거리/날씨)을 먼저 정하고, 그 조건에 맞는 말이
+    // 더 자주 뽑히도록 출전마를 선발한다.
     const venue = engine.VENUES[Math.floor(Math.random() * engine.VENUES.length)];
     const trackType = venue.trackTypes[Math.floor(Math.random() * venue.trackTypes.length)];
     const distance = engine.DISTANCES[Math.floor(Math.random() * engine.DISTANCES.length)];
@@ -127,6 +152,7 @@ async function run(io, store, onlineUsers, chatHistory, chatMax) {
     const weather = engine.WEATHERS[Math.floor(Math.random() * engine.WEATHERS.length)];
     const trackCondition = engine.getTrackCondition(trackType, weather);
 
+    selectRaceField(trackType, distanceCategory);
     state.fieldHorses.forEach(h => { h.condition = Math.max(15, Math.min(100, Math.round(70 + (Math.random() * 44 - 22)))); });
 
     state.currentRace = { venue, trackType, distance, distanceCategory, weather, trackCondition };

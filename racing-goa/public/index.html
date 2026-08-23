@@ -862,39 +862,25 @@ body { background-color: var(--bg-color); color: var(--text-main); }
     }).join("");
   }
 
-  // 각 말의 선호 거리(preferredDistance)를 기준으로 단거리/마일/중거리/장거리 4개 구간별
-  // 적성 등급(S/A/B/C/D)을 계산한다. 잔디/더트 적성 표시 방식과 통일감 있게.
-  const DIST_CATEGORY_REP = { sprint: 1200, mile: 1500, middle: 2000, long: 2800 };
-  function gradeFromDiff(diff) {
-    if (diff <= 200) return "S";
-    if (diff <= 500) return "A";
-    if (diff <= 900) return "B";
-    if (diff <= 1400) return "C";
-    return "D";
-  }
+  // 각 말의 실제 거리 적성(distanceGrades, 서버에서 내려줌)을 그대로 표시.
+  // 잔디/더트 적성 표시와 통일감 있게 등급별 색상만 클라이언트에서 매핑.
   function gradeClass(grade) {
-    if (grade === "S") return "apt-great";
-    if (grade === "A") return "apt-good";
-    if (grade === "D") return "apt-bad";
-    return "apt-normal";
-  }
-  function allDistanceGrades(h) {
-    const out = {};
-    for (const cat in DIST_CATEGORY_REP) {
-      out[cat] = gradeFromDiff(Math.abs(h.preferredDistance - DIST_CATEGORY_REP[cat]));
-    }
-    return out;
+    if (grade === "S" || grade === "A") return "apt-great";
+    if (grade === "B") return "apt-good";
+    if (grade === "C") return "apt-normal";
+    return "apt-bad"; // D
   }
 
   function renderHorseCards() {
     const grid = $("horse-select-grid");
     grid.innerHTML = fieldHorses.map(h => {
       const oddsEntry = currentRace && currentRace.oddsList ? currentRace.oddsList.find(o => o.id === h.id) : null;
-      const grades = allDistanceGrades(h);
+      const grades = h.distanceGrades || {};
       const catLabel = { sprint: "단거리", mile: "마일", middle: "중거리", long: "장거리" };
       const aptChips = Object.keys(catLabel).map(cat => {
         const active = currentRace && currentRace.distanceCategory === cat ? "apt-active" : "";
-        return `<span class="apt-badge ${gradeClass(grades[cat])} ${active}">${catLabel[cat]}${grades[cat]}</span>`;
+        const g = grades[cat] || "-";
+        return `<span class="apt-badge ${gradeClass(g)} ${active}">${catLabel[cat]}${g}</span>`;
       }).join("");
       const selectedClass = selectedHorseId === h.id ? "selected" : "";
       const disabledClass = cyclePhase !== "PREP" ? "disabled" : "";
