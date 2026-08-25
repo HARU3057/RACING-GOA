@@ -18,6 +18,8 @@ const USE_MONGO = !!MONGODB_URI;
 const DEFAULTS = {
   money: 0,
   haruRose: false,
+  trashUpgrade: false,
+  haruBat: false,
   workerCount: 0,
   isAdmin: false
 };
@@ -32,6 +34,8 @@ function initMongo() {
     passwordHash: { type: String, required: true },
     money: { type: Number, default: DEFAULTS.money },
     haruRose: { type: Boolean, default: DEFAULTS.haruRose },
+    trashUpgrade: { type: Boolean, default: DEFAULTS.trashUpgrade },
+    haruBat: { type: Boolean, default: DEFAULTS.haruBat },
     workerCount: { type: Number, default: DEFAULTS.workerCount },
     isAdmin: { type: Boolean, default: DEFAULTS.isAdmin }
   }, { timestamps: true });
@@ -115,6 +119,8 @@ function toPlain(u) {
     nickname: u.nickname,
     money: u.money,
     haruRose: u.haruRose,
+    trashUpgrade: !!u.trashUpgrade,
+    haruBat: !!u.haruBat,
     workerCount: u.workerCount,
     isAdmin: !!u.isAdmin
   };

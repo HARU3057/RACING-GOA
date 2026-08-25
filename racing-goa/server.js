@@ -10,10 +10,19 @@ const { Server } = require("socket.io");
 const store = require("./lib/store");
 const raceLoop = require("./lib/raceLoop");
 
-const WORKER_PRICE = 500;
-const WORKER_MAX = 5;
+const WORKER_BASE_PRICE = 500; // 1번째 고용 가격, 이후 고용할 때마다 2배씩 증가
+const WORKER_MAX = 10;
 const WORKER_INTERVAL_MS = 8000;
 const HARU_ROSE_PRICE = 30000;
+const HARU_TRASH_UPGRADE_PRICE = 100000; // 쓰레기통 뒤질 때마다 +5원 추가 획득
+const HARU_BAT_PRICE = 500000; // 1등 적중 시 배당 3배 추가 지급
+const TRASH_UPGRADE_BONUS = 5;
+const BAT_WIN_MULTIPLIER = 3;
+
+// 워커 n번째(0-indexed) 고용 가격: 500, 1000, 2000, 4000, ... (매번 2배)
+function getWorkerPrice(currentWorkerCount) {
+  return WORKER_BASE_PRICE * Math.pow(2, currentWorkerCount);
+}
 
 // 첫 관리자가 되기 위한 비밀 키. Render 환경변수 ADMIN_SECRET으로 반드시 직접 설정하세요.
 // 설정을 안 하면 서버 시작할 때마다 무작위로 새로 만들어서 콘솔(로그)에 출력합니다.
@@ -48,7 +57,11 @@ const CHAT_MAX = 50;
 
 function publicUser(u) {
   if (!u) return null;
-  return { nickname: u.nickname, money: u.money, haruRose: u.haruRose, workerCount: u.workerCount, isAdmin: !!u.isAdmin };
+  return {
+    nickname: u.nickname, money: u.money, haruRose: u.haruRose,
+    trashUpgrade: !!u.trashUpgrade, haruBat: !!u.haruBat,
+    workerCount: u.workerCount, isAdmin: !!u.isAdmin
+  };
 }
 
 function isNicknameValid(nickname) {
@@ -265,6 +278,8 @@ io.on("connection", (socket) => {
 
   socket.on("trash:search", async (data, cb) => {
     if (!currentToken) return cb && cb({ ok: false, error: "로그인이 필요합니다." });
+    const user = await store.getUserByToken(currentToken);
+    if (!user) return cb && cb({ ok: false, error: "계정 정보를 찾을 수 없습니다." });
     let gain = 0, message = "", type = "trash";
     const rand = Math.random() * 100;
     if (rand < 88) {
@@ -278,7 +293,11 @@ io.on("connection", (socket) => {
       message = "럭키! 구석에서 10달러 지폐를 찾았습니다! (+$10)";
       type = "win";
     }
-    let updated = await store.getUserByToken(currentToken);
+    if (user.trashUpgrade && gain > 0) {
+      gain += TRASH_UPGRADE_BONUS;
+      message += ` (+$${TRASH_UPGRADE_BONUS} 양철쓰레기통 보너스)`;
+    }
+    let updated = user;
     if (gain > 0) updated = await store.incMoney(currentToken, gain);
     cb && cb({ ok: true, gain, message, type, money: updated.money });
   });
@@ -288,10 +307,11 @@ io.on("connection", (socket) => {
     const user = await store.getUserByToken(currentToken);
     if (!user) return cb && cb({ ok: false, error: "계정 정보를 찾을 수 없습니다." });
     if (user.workerCount >= WORKER_MAX) return cb && cb({ ok: false, error: "이미 정원이 가득 찼습니다." });
-    if (user.money < WORKER_PRICE) return cb && cb({ ok: false, error: "돈이 부족합니다." });
-    await store.incMoney(currentToken, -WORKER_PRICE);
+    const price = getWorkerPrice(user.workerCount);
+    if (user.money < price) return cb && cb({ ok: false, error: "돈이 부족합니다." });
+    await store.incMoney(currentToken, -price);
     const updated = await store.updateUser(currentToken, { workerCount: user.workerCount + 1 });
-    cb && cb({ ok: true, user: publicUser(updated) });
+    cb && cb({ ok: true, user: publicUser(updated), paid: price });
   });
 
   socket.on("shop:buyRose", async (data, cb) => {
@@ -302,6 +322,28 @@ io.on("connection", (socket) => {
     if (user.money < HARU_ROSE_PRICE) return cb && cb({ ok: false, error: "돈이 부족합니다." });
     await store.incMoney(currentToken, -HARU_ROSE_PRICE);
     const updated = await store.updateUser(currentToken, { haruRose: true });
+    cb && cb({ ok: true, user: publicUser(updated) });
+  });
+
+  socket.on("shop:buyTrashUpgrade", async (data, cb) => {
+    if (!currentToken) return cb && cb({ ok: false, error: "로그인이 필요합니다." });
+    const user = await store.getUserByToken(currentToken);
+    if (!user) return cb && cb({ ok: false, error: "계정 정보를 찾을 수 없습니다." });
+    if (user.trashUpgrade) return cb && cb({ ok: false, error: "이미 보유 중입니다." });
+    if (user.money < HARU_TRASH_UPGRADE_PRICE) return cb && cb({ ok: false, error: "돈이 부족합니다." });
+    await store.incMoney(currentToken, -HARU_TRASH_UPGRADE_PRICE);
+    const updated = await store.updateUser(currentToken, { trashUpgrade: true });
+    cb && cb({ ok: true, user: publicUser(updated) });
+  });
+
+  socket.on("shop:buyBat", async (data, cb) => {
+    if (!currentToken) return cb && cb({ ok: false, error: "로그인이 필요합니다." });
+    const user = await store.getUserByToken(currentToken);
+    if (!user) return cb && cb({ ok: false, error: "계정 정보를 찾을 수 없습니다." });
+    if (user.haruBat) return cb && cb({ ok: false, error: "이미 보유 중입니다." });
+    if (user.money < HARU_BAT_PRICE) return cb && cb({ ok: false, error: "돈이 부족합니다." });
+    await store.incMoney(currentToken, -HARU_BAT_PRICE);
+    const updated = await store.updateUser(currentToken, { haruBat: true });
     cb && cb({ ok: true, user: publicUser(updated) });
   });
 

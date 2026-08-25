@@ -397,8 +397,8 @@ body { background-color: var(--bg-color); color: var(--text-main); }
             <button class="btn-back-mini">← 시장으로</button>
             <div class="shop-item-card">
               <div class="shop-item-top"><h3>🗑️👷 쓰레기통 알바생</h3><span class="shop-item-price" id="worker-price">$500</span></div>
-              <div class="shop-item-desc">고용하면 8초마다 자동으로 쓰레기통을 뒤져 돈을 벌어옵니다. (다른 화면에 있거나 접속을 끊어도 계속 일합니다)<br>최대 5명까지 고용 가능.</div>
-              <div class="shop-item-owned-badge" id="worker-owned-badge">현재 고용 인원: 0 / 5</div><br>
+              <div class="shop-item-desc">고용하면 8초마다 자동으로 쓰레기통을 뒤져 돈을 벌어옵니다. (다른 화면에 있거나 접속을 끊어도 계속 일합니다)<br>최대 10명까지 고용 가능하며, 고용할 때마다 다음 고용 비용이 2배씩 오릅니다.</div>
+              <div class="shop-item-owned-badge" id="worker-owned-badge">현재 고용 인원: 0 / 10</div><br>
               <button class="btn btn-main" id="btn-buy-worker">고용하기</button>
             </div>
           </div>
@@ -410,6 +410,18 @@ body { background-color: var(--bg-color); color: var(--text-main); }
               <div class="shop-item-desc">경마에서 2위로 들어왔을 때 원래는 배당금의 30%만 지급되지만, 이 아이템을 가지고 있으면 페널티 없이 배당금 전액을 지급받습니다.</div>
               <div id="rose-owned-badge" class="shop-item-status" style="display:none;">✅ 보유 중</div>
               <button class="btn btn-main" id="btn-buy-rose">구매하기</button>
+            </div>
+            <div class="shop-item-card">
+              <div class="shop-item-top"><h3>🗑️✨ 양철쓰레기통</h3><span class="shop-item-price">$100,000</span></div>
+              <div class="shop-item-desc">쓰레기통을 뒤져서 돈을 얻었을 때, 추가로 $5를 더 획득합니다. (꽝일 때는 적용 안 됨)</div>
+              <div id="trash-upgrade-owned-badge" class="shop-item-status" style="display:none;">✅ 보유 중</div>
+              <button class="btn btn-main" id="btn-buy-trash-upgrade">구매하기</button>
+            </div>
+            <div class="shop-item-card">
+              <div class="shop-item-top"><h3>🏏 누군가의 배트</h3><span class="shop-item-price">$500,000</span></div>
+              <div class="shop-item-desc">경마에서 1등으로 적중했을 때, 원래 받을 배당금의 3배를 지급받습니다.</div>
+              <div id="bat-owned-badge" class="shop-item-status" style="display:none;">✅ 보유 중</div>
+              <button class="btn btn-main" id="btn-buy-bat">구매하기</button>
             </div>
           </div>
         </section>
@@ -471,7 +483,7 @@ body { background-color: var(--bg-color); color: var(--text-main); }
 
   // ---------- 상태 ----------
   let myToken = localStorage.getItem("racingGoaToken") || null;
-  let myUser = { nickname: "", money: 0, haruRose: false, workerCount: 0 };
+  let myUser = { nickname: "", money: 0, haruRose: false, trashUpgrade: false, haruBat: false, workerCount: 0 };
 
   let cyclePhase = "PREP";
   let currentRace = null;
@@ -966,21 +978,32 @@ body { background-color: var(--bg-color); color: var(--text-main); }
   }, 500);
 
   // ================= 시장 =================
+  const WORKER_BASE_PRICE = 500;
+  const WORKER_MAX = 10;
+  function getWorkerPrice(count) { return WORKER_BASE_PRICE * Math.pow(2, count); }
+
   function renderAgencyPanel() {
-    $("worker-owned-badge").textContent = `현재 고용 인원: ${myUser.workerCount || 0} / 5`;
-    $("btn-buy-worker").disabled = (myUser.workerCount || 0) >= 5;
-    $("btn-buy-worker").textContent = (myUser.workerCount || 0) >= 5 ? "정원 초과" : "고용하기";
+    const count = myUser.workerCount || 0;
+    $("worker-owned-badge").textContent = `현재 고용 인원: ${count} / ${WORKER_MAX}`;
+    const maxed = count >= WORKER_MAX;
+    $("btn-buy-worker").disabled = maxed;
+    $("btn-buy-worker").textContent = maxed ? "정원 초과" : `고용하기 ($${getWorkerPrice(count).toLocaleString()})`;
+    $("worker-price").textContent = maxed ? "-" : "$" + getWorkerPrice(count).toLocaleString();
   }
   function renderHaruPanel() {
     $("rose-owned-badge").style.display = myUser.haruRose ? "" : "none";
     $("btn-buy-rose").style.display = myUser.haruRose ? "none" : "";
+    $("trash-upgrade-owned-badge").style.display = myUser.trashUpgrade ? "" : "none";
+    $("btn-buy-trash-upgrade").style.display = myUser.trashUpgrade ? "none" : "";
+    $("bat-owned-badge").style.display = myUser.haruBat ? "" : "none";
+    $("btn-buy-bat").style.display = myUser.haruBat ? "none" : "";
   }
   $("btn-buy-worker").addEventListener("click", () => {
     socket.emit("shop:buyWorker", {}, (res) => {
       if (!res.ok) { toast(res.error, "error"); return; }
       myUser = res.user;
       updateHeader();
-      toast("👷 알바생을 고용했습니다!");
+      toast(`👷 알바생을 고용했습니다! ($${res.paid.toLocaleString()})`);
     });
   });
   $("btn-buy-rose").addEventListener("click", () => {
@@ -989,6 +1012,22 @@ body { background-color: var(--bg-color); color: var(--text-main); }
       myUser = res.user;
       updateHeader();
       toast("🌹 누군가의 장미를 구매했습니다!");
+    });
+  });
+  $("btn-buy-trash-upgrade").addEventListener("click", () => {
+    socket.emit("shop:buyTrashUpgrade", {}, (res) => {
+      if (!res.ok) { toast(res.error, "error"); return; }
+      myUser = res.user;
+      updateHeader();
+      toast("🗑️✨ 양철쓰레기통을 구매했습니다!");
+    });
+  });
+  $("btn-buy-bat").addEventListener("click", () => {
+    socket.emit("shop:buyBat", {}, (res) => {
+      if (!res.ok) { toast(res.error, "error"); return; }
+      myUser = res.user;
+      updateHeader();
+      toast("🏏 누군가의 배트를 구매했습니다!");
     });
   });
 

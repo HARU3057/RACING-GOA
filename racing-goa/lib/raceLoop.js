@@ -6,6 +6,8 @@
 
 const engine = require("./raceEngine");
 
+const BAT_WIN_MULTIPLIER = 3; // 🏏 누군가의 배트: 1등 적중 시 배당 배율
+
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 // 서버 전역에서 단 하나만 존재하는 "지금 진행 중인 경마" 상태
@@ -267,12 +269,18 @@ async function run(io, store, onlineUsers, chatHistory, chatMax) {
       const baseOdds = oddsEntry ? oddsEntry.odds : 2;
       const user = await store.getUserByToken(token);
       const haruRose = user ? user.haruRose : false;
+      const haruBat = user ? user.haruBat : false;
 
       let payout = 0;
       let message = "";
       if (myRank === 1) {
         payout = Math.round(bet.amount * baseOdds);
-        message = `🏆 적중! ${state.laneAssignment[bet.horseId]}번 ${betHorse.name} 우승! $${payout.toLocaleString()} 획득! (${baseOdds}배)`;
+        if (haruBat) {
+          payout = Math.round(payout * BAT_WIN_MULTIPLIER);
+          message = `🏆 적중! ${state.laneAssignment[bet.horseId]}번 ${betHorse.name} 우승! $${payout.toLocaleString()} 획득! (${baseOdds}배 × 🏏 누군가의 배트 ${BAT_WIN_MULTIPLIER}배)`;
+        } else {
+          message = `🏆 적중! ${state.laneAssignment[bet.horseId]}번 ${betHorse.name} 우승! $${payout.toLocaleString()} 획득! (${baseOdds}배)`;
+        }
       } else if (myRank === 2) {
         const fullWinAmount = bet.amount * baseOdds;
         const placeMult = haruRose ? 1 : 0.3;
