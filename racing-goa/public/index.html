@@ -209,6 +209,15 @@ body { background-color: var(--bg-color); color: var(--text-main); }
 .shop-item-price { color: var(--accent-color); font-weight: 800; font-size: 15px; }
 .shop-item-desc { font-size: 13px; color: var(--text-muted); line-height: 1.6; margin-bottom: 12px; }
 .shop-item-status { font-size: 13px; color: #8fe3a0; margin-bottom: 10px; font-weight: 700; }
+
+/* ---------- 목장(길드) ---------- */
+.ranch-list { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.ranch-list-empty { color: var(--text-muted); font-size: 13px; padding: 10px 0; }
+.ranch-row { display: flex; justify-content: space-between; align-items: center; background: #14151f; border: 1px solid var(--border-color); border-radius: 8px; padding: 8px 12px; font-size: 13px; }
+.ranch-row .ranch-owner-tag { color: var(--accent-color); font-size: 11px; font-weight: 800; margin-left: 6px; }
+.ranch-row .ranch-online-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #4a4d68; margin-right: 6px; }
+.ranch-row .ranch-online-dot.online { background: var(--accent-green); }
+.ranch-row .btn-mini { padding: 4px 10px; font-size: 11px; }
 .shop-item-owned-badge { display: inline-block; background: #23405a; color: #7fd0ff; font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 20px; margin-bottom: 10px; }
 
 /* ---------- 쓰레기통 ---------- */
@@ -318,6 +327,7 @@ body { background-color: var(--bg-color); color: var(--text-main); }
         <button class="nav-btn active" data-view="race-view">🏇<span>경마</span></button>
         <button class="nav-btn" data-view="market-view">🏪<span>시장</span></button>
         <button class="nav-btn" data-view="trash-view">🗑️<span>쓰레기통</span></button>
+        <button class="nav-btn" data-view="ranch-view">🐴<span>목장</span></button>
       </nav>
 
       <!-- 메인 컨텐츠 -->
@@ -436,6 +446,46 @@ body { background-color: var(--bg-color); color: var(--text-main); }
           </div>
         </section>
 
+        <!-- 목장(길드) 뷰 -->
+        <section id="ranch-view" class="view">
+          <div class="hub-title">🐴 목장</div>
+
+          <div id="ranch-no-guild">
+            <div class="shop-item-card" style="max-width:480px;">
+              <div class="shop-item-top"><h3>새 목장 만들기</h3><span class="shop-item-price">$100,000,000</span></div>
+              <div class="shop-item-desc">함께할 목장을 새로 만드세요. 목장원끼리는 서로 돈을 주고받을 수 있습니다.</div>
+              <input id="ranch-create-input" class="modal-input" maxlength="16" placeholder="목장 이름 (1~16자)">
+              <button class="btn btn-main" id="btn-ranch-create">목장 만들기 ($100,000,000)</button>
+            </div>
+
+            <div class="shop-item-card" style="max-width:480px;">
+              <div class="shop-item-top"><h3>목장 목록</h3><button class="btn-mini" id="btn-ranch-refresh">새로고침</button></div>
+              <div class="shop-item-desc">가입은 신청 후 목장주 승인이 필요합니다.</div>
+              <div id="ranch-list" class="ranch-list"></div>
+            </div>
+          </div>
+
+          <div id="ranch-has-guild" style="display:none;">
+            <div class="shop-item-card" style="max-width:480px;">
+              <div class="shop-item-top"><h3 id="ranch-my-name">-</h3><button class="btn-mini" id="btn-ranch-leave">탈퇴하기</button></div>
+              <div class="shop-item-desc">목장원 목록</div>
+              <div id="ranch-member-list" class="ranch-list"></div>
+            </div>
+
+            <div class="shop-item-card" id="ranch-requests-card" style="max-width:480px; display:none;">
+              <div class="shop-item-top"><h3>가입 신청 (목장주 전용)</h3></div>
+              <div id="ranch-requests-list" class="ranch-list"></div>
+            </div>
+
+            <div class="shop-item-card" style="max-width:480px;">
+              <div class="shop-item-top"><h3>목장원에게 송금</h3></div>
+              <input id="ranch-transfer-nick" class="modal-input" placeholder="받는 사람 닉네임">
+              <input id="ranch-transfer-amount" class="modal-input" type="number" min="1" placeholder="보낼 금액">
+              <button class="btn btn-main" id="btn-ranch-transfer">보내기</button>
+            </div>
+          </div>
+        </section>
+
       </main>
 
       <!-- 채팅 사이드바 -->
@@ -483,7 +533,7 @@ body { background-color: var(--bg-color); color: var(--text-main); }
 
   // ---------- 상태 ----------
   let myToken = localStorage.getItem("racingGoaToken") || null;
-  let myUser = { nickname: "", money: 0, haruRose: false, trashUpgrade: false, haruBat: false, workerCount: 0 };
+  let myUser = { nickname: "", money: 0, haruRose: false, trashUpgrade: false, haruBat: false, workerCount: 0, guildName: null };
 
   let cyclePhase = "PREP";
   let currentRace = null;
@@ -586,6 +636,7 @@ body { background-color: var(--bg-color); color: var(--text-main); }
       document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
       btn.classList.add("active");
       $(btn.dataset.view).classList.add("active");
+      if (btn.dataset.view === "ranch-view") renderRanchView();
     });
   });
 
@@ -1056,6 +1107,156 @@ body { background-color: var(--bg-color); color: var(--text-main); }
       myUser.money = res.money;
       updateHeader();
     });
+  });
+
+  // ================= 목장(길드) =================
+  function renderRanchView() {
+    if (myUser.guildName) {
+      $("ranch-no-guild").style.display = "none";
+      $("ranch-has-guild").style.display = "";
+      $("ranch-my-name").textContent = "🐴 " + myUser.guildName;
+      loadRanchMembers();
+    } else {
+      $("ranch-no-guild").style.display = "";
+      $("ranch-has-guild").style.display = "none";
+      loadRanchList();
+    }
+  }
+
+  function loadRanchList() {
+    socket.emit("guild:list", {}, (res) => {
+      const box = $("ranch-list");
+      if (!res.ok || !res.guilds.length) { box.innerHTML = '<div class="ranch-list-empty">아직 만들어진 목장이 없습니다.</div>'; return; }
+      box.innerHTML = res.guilds.map(g => `
+        <div class="ranch-row">
+          <span>🐴 ${escapeHtml(g.name)} <span style="color:var(--text-muted);">(${g.memberCount}명)</span></span>
+          <button class="btn-mini" data-guild="${escapeHtml(g.name)}">가입 신청</button>
+        </div>`).join("");
+      box.querySelectorAll("button[data-guild]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          socket.emit("guild:join", { name: btn.dataset.guild }, (res) => {
+            if (!res.ok) { toast(res.error, "error"); return; }
+            toast(`🐴 "${btn.dataset.guild}" 목장에 가입 신청을 보냈습니다. 목장주 승인을 기다려주세요.`);
+          });
+        });
+      });
+    });
+  }
+
+  function loadRanchMembers() {
+    socket.emit("guild:members", {}, (res) => {
+      const box = $("ranch-member-list");
+      if (!res.ok) { box.innerHTML = '<div class="ranch-list-empty">불러오지 못했습니다.</div>'; return; }
+      box.innerHTML = res.members.map(m => `
+        <div class="ranch-row">
+          <span><span class="ranch-online-dot ${m.online ? "online" : ""}"></span>${escapeHtml(m.nickname)}${m.isOwner ? '<span class="ranch-owner-tag">목장주</span>' : ""}</span>
+          ${m.nickname !== myUser.nickname ? `<button class="btn-mini" data-send-to="${escapeHtml(m.nickname)}">송금</button>` : ""}
+        </div>`).join("");
+      box.querySelectorAll("button[data-send-to]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          $("ranch-transfer-nick").value = btn.dataset.sendTo;
+          $("ranch-transfer-amount").focus();
+        });
+      });
+
+      if (res.isOwner) {
+        $("ranch-requests-card").style.display = "";
+        loadRanchRequests();
+      } else {
+        $("ranch-requests-card").style.display = "none";
+      }
+    });
+  }
+
+  function loadRanchRequests() {
+    socket.emit("guild:requests", {}, (res) => {
+      const box = $("ranch-requests-list");
+      if (!res.ok) { box.innerHTML = '<div class="ranch-list-empty">불러오지 못했습니다.</div>'; return; }
+      if (!res.requests.length) { box.innerHTML = '<div class="ranch-list-empty">대기 중인 신청이 없습니다.</div>'; return; }
+      box.innerHTML = res.requests.map(r => `
+        <div class="ranch-row">
+          <span>${escapeHtml(r.nickname)}</span>
+          <span>
+            <button class="btn-mini" data-approve="${escapeHtml(r.nickname)}">승인</button>
+            <button class="btn-mini" data-reject="${escapeHtml(r.nickname)}">거절</button>
+          </span>
+        </div>`).join("");
+      box.querySelectorAll("button[data-approve]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          socket.emit("guild:approve", { nickname: btn.dataset.approve }, (res) => {
+            if (!res.ok) { toast(res.error, "error"); return; }
+            toast(`${btn.dataset.approve}님을 승인했습니다.`);
+            loadRanchMembers();
+          });
+        });
+      });
+      box.querySelectorAll("button[data-reject]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          socket.emit("guild:reject", { nickname: btn.dataset.reject }, (res) => {
+            if (!res.ok) { toast(res.error, "error"); return; }
+            toast(`${btn.dataset.reject}님의 신청을 거절했습니다.`);
+            loadRanchRequests();
+          });
+        });
+      });
+    });
+  }
+
+  $("btn-ranch-create").addEventListener("click", () => {
+    const name = $("ranch-create-input").value.trim();
+    if (!name) return;
+    socket.emit("guild:create", { name }, (res) => {
+      if (!res.ok) { toast(res.error, "error"); return; }
+      myUser = res.user;
+      updateHeader();
+      $("ranch-create-input").value = "";
+      renderRanchView();
+      toast(`🐴 "${name}" 목장을 만들었습니다.`);
+    });
+  });
+  $("btn-ranch-refresh").addEventListener("click", loadRanchList);
+  $("btn-ranch-leave").addEventListener("click", () => {
+    socket.emit("guild:leave", {}, (res) => {
+      if (!res.ok) { toast(res.error, "error"); return; }
+      myUser = res.user;
+      updateHeader();
+      renderRanchView();
+      toast("목장을 탈퇴했습니다.");
+    });
+  });
+  $("btn-ranch-transfer").addEventListener("click", () => {
+    const targetNickname = $("ranch-transfer-nick").value.trim();
+    const amount = Number($("ranch-transfer-amount").value);
+    if (!targetNickname || !amount) { toast("받는 사람과 금액을 입력해주세요.", "error"); return; }
+    socket.emit("guild:transfer", { targetNickname, amount }, (res) => {
+      if (!res.ok) { toast(res.error, "error"); return; }
+      myUser.money = res.money;
+      updateHeader();
+      $("ranch-transfer-nick").value = "";
+      $("ranch-transfer-amount").value = "";
+      toast(`💸 ${targetNickname}님에게 $${amount.toLocaleString()}를 보냈습니다.`);
+    });
+  });
+
+  socket.on("guild:notice", (data) => {
+    toast(data.text);
+    if (data.refresh) {
+      // 가입 신청/승인 등으로 내 소속 상태가 바뀌었을 수 있으니 최신 정보로 갱신
+      socket.emit("me:refresh", {}, (res) => {
+        if (res.ok) {
+          myUser = res.user;
+          updateHeader();
+          if (document.getElementById("ranch-view").classList.contains("active")) renderRanchView();
+        }
+      });
+    } else if (document.getElementById("ranch-view").classList.contains("active")) {
+      renderRanchView();
+    }
+  });
+  socket.on("guild:moneyReceived", (data) => {
+    myUser.money = data.money;
+    updateHeader();
+    toast(data.message, "win");
   });
 
 })();

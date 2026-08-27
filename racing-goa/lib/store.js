@@ -21,10 +21,11 @@ const DEFAULTS = {
   trashUpgrade: false,
   haruBat: false,
   workerCount: 0,
-  isAdmin: false
+  isAdmin: false,
+  guildName: null
 };
 
-let mongoose, UserModel, PendingBetsModel;
+let mongoose, UserModel, PendingBetsModel, GuildModel;
 
 function initMongo() {
   mongoose = require("mongoose");
@@ -37,7 +38,8 @@ function initMongo() {
     trashUpgrade: { type: Boolean, default: DEFAULTS.trashUpgrade },
     haruBat: { type: Boolean, default: DEFAULTS.haruBat },
     workerCount: { type: Number, default: DEFAULTS.workerCount },
-    isAdmin: { type: Boolean, default: DEFAULTS.isAdmin }
+    isAdmin: { type: Boolean, default: DEFAULTS.isAdmin },
+    guildName: { type: String, default: null }
   }, { timestamps: true });
   UserModel = mongoose.models.RacingGoaUser || mongoose.model("RacingGoaUser", userSchema);
 
@@ -50,6 +52,15 @@ function initMongo() {
   });
   PendingBetsModel = mongoose.models.RacingGoaPendingBets || mongoose.model("RacingGoaPendingBets", pendingBetsSchema);
 
+  // 목장(길드) — 이름 + 소유자 + 멤버 토큰 목록 + 가입 승인 대기 목록
+  const guildSchema = new mongoose.Schema({
+    name: { type: String, unique: true, required: true, index: true },
+    ownerToken: { type: String, required: true },
+    members: [{ type: String }], // token 목록
+    pendingRequests: [{ type: String }] // 가입 승인 대기 중인 token 목록
+  }, { timestamps: true });
+  GuildModel = mongoose.models.RacingGoaGuild || mongoose.model("RacingGoaGuild", guildSchema);
+
   return mongoose.connect(MONGODB_URI).then(() => {
     console.log("[store] MongoDB Atlas 연결 완료 — 데이터가 영구 저장됩니다.");
   }).catch(err => {
@@ -61,8 +72,10 @@ function initMongo() {
 const DATA_DIR = path.join(__dirname, "..", "data");
 const DATA_FILE = path.join(DATA_DIR, "users.json");
 const BETS_FILE = path.join(DATA_DIR, "pendingBets.json");
+const GUILDS_FILE = path.join(DATA_DIR, "guilds.json");
 let jsonUsers = {}; // token -> user
 let jsonPendingBets = null; // { raceNumber, bets: [...] } | null
+let jsonGuilds = {}; // name -> { name, ownerToken, members: [token] }
 
 function loadJson() {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -80,6 +93,21 @@ function loadJson() {
     } catch (e) {
       jsonPendingBets = null;
     }
+  }
+  if (fs.existsSync(GUILDS_FILE)) {
+    try {
+      jsonGuilds = JSON.parse(fs.readFileSync(GUILDS_FILE, "utf-8"));
+    } catch (e) {
+      jsonGuilds = {};
+    }
+  }
+}
+
+function saveGuildsFileSync() {
+  try {
+    fs.writeFileSync(GUILDS_FILE, JSON.stringify(jsonGuilds, null, 2));
+  } catch (e) {
+    console.error("[store] guilds.json 저장 실패:", e.message);
   }
 }
 
@@ -122,7 +150,8 @@ function toPlain(u) {
     trashUpgrade: !!u.trashUpgrade,
     haruBat: !!u.haruBat,
     workerCount: u.workerCount,
-    isAdmin: !!u.isAdmin
+    isAdmin: !!u.isAdmin,
+    guildName: u.guildName || null
   };
 }
 
@@ -204,6 +233,110 @@ async function getAllUsersWithWorkers() {
   return Object.values(jsonUsers).filter(u => u.workerCount > 0).map(u => ({ ...u }));
 }
 
+// ---- 목장(길드) ----
+function guildToPlain(g) {
+  if (!g) return null;
+  return { name: g.name, ownerToken: g.ownerToken, members: [...g.members], pendingRequests: [...(g.pendingRequests || [])] };
+}
+
+async function createGuild(name, ownerToken) {
+  if (UseMongoActive()) {
+    const doc = await GuildModel.create({ name, ownerToken, members: [ownerToken], pendingRequests: [] });
+    return guildToPlain(doc);
+  }
+  if (jsonGuilds[name]) return null; // 이미 존재
+  const guild = { name, ownerToken, members: [ownerToken], pendingRequests: [] };
+  jsonGuilds[name] = guild;
+  saveGuildsFileSync();
+  return guildToPlain(guild);
+}
+
+async function getGuildByName(name) {
+  if (!name) return null;
+  if (UseMongoActive()) {
+    const doc = await GuildModel.findOne({ name });
+    return guildToPlain(doc);
+  }
+  return jsonGuilds[name] ? guildToPlain(jsonGuilds[name]) : null;
+}
+
+async function listGuilds() {
+  if (UseMongoActive()) {
+    const docs = await GuildModel.find({});
+    return docs.map(g => ({ name: g.name, memberCount: g.members.length }));
+  }
+  return Object.values(jsonGuilds).map(g => ({ name: g.name, memberCount: g.members.length }));
+}
+
+async function addGuildMember(name, token) {
+  if (UseMongoActive()) {
+    const doc = await GuildModel.findOneAndUpdate(
+      { name },
+      { $addToSet: { members: token }, $pull: { pendingRequests: token } },
+      { new: true }
+    );
+    return guildToPlain(doc);
+  }
+  if (!jsonGuilds[name]) return null;
+  if (!jsonGuilds[name].members.includes(token)) jsonGuilds[name].members.push(token);
+  jsonGuilds[name].pendingRequests = (jsonGuilds[name].pendingRequests || []).filter(t => t !== token);
+  saveGuildsFileSync();
+  return guildToPlain(jsonGuilds[name]);
+}
+
+// 가입 신청 추가 (이미 멤버거나 이미 신청한 상태면 그대로 반환)
+async function addGuildRequest(name, token) {
+  if (UseMongoActive()) {
+    const doc = await GuildModel.findOneAndUpdate({ name }, { $addToSet: { pendingRequests: token } }, { new: true });
+    return guildToPlain(doc);
+  }
+  if (!jsonGuilds[name]) return null;
+  jsonGuilds[name].pendingRequests = jsonGuilds[name].pendingRequests || [];
+  if (!jsonGuilds[name].pendingRequests.includes(token)) jsonGuilds[name].pendingRequests.push(token);
+  saveGuildsFileSync();
+  return guildToPlain(jsonGuilds[name]);
+}
+
+// 가입 신청 거절/취소 (멤버로 넣지 않고 대기목록에서만 제거)
+async function removeGuildRequest(name, token) {
+  if (UseMongoActive()) {
+    const doc = await GuildModel.findOneAndUpdate({ name }, { $pull: { pendingRequests: token } }, { new: true });
+    return guildToPlain(doc);
+  }
+  if (!jsonGuilds[name]) return null;
+  jsonGuilds[name].pendingRequests = (jsonGuilds[name].pendingRequests || []).filter(t => t !== token);
+  saveGuildsFileSync();
+  return guildToPlain(jsonGuilds[name]);
+}
+
+// 멤버를 빼고, 남은 인원이 없으면 길드 자체를 삭제, 소유자가 나갔으면 다음 사람에게 소유권 위임.
+// 반환값: { deleted: true } | { deleted: false, guild }
+async function removeGuildMember(name, token) {
+  if (UseMongoActive()) {
+    const doc = await GuildModel.findOne({ name });
+    if (!doc) return { deleted: true };
+    doc.members = doc.members.filter(t => t !== token);
+    if (doc.members.length === 0) {
+      await GuildModel.deleteOne({ name });
+      return { deleted: true };
+    }
+    if (doc.ownerToken === token) doc.ownerToken = doc.members[0];
+    await doc.save();
+    return { deleted: false, guild: guildToPlain(doc) };
+  }
+  const g = jsonGuilds[name];
+  if (!g) return { deleted: true };
+  g.members = g.members.filter(t => t !== token);
+  if (g.members.length === 0) {
+    delete jsonGuilds[name];
+    saveGuildsFileSync();
+    return { deleted: true };
+  }
+  if (g.ownerToken === token) g.ownerToken = g.members[0];
+  saveGuildsFileSync();
+  return { deleted: false, guild: guildToPlain(g) };
+}
+
 // ---- 진행 중인 경기의 베팅 내역 임시 저장 (서버가 경주 도중 죽어도 환불할 수 있도록) ----
 async function savePendingBets(raceNumber, betsArray) {
   if (UseMongoActive()) {
@@ -257,10 +390,13 @@ function flushSync() {
     console.error("[store] flushSync 실패:", e.message);
   }
   saveBetsFileSync();
+  saveGuildsFileSync();
 }
 
 module.exports = {
   init, createUser, verifyPassword, getUserByToken, getUserByNickname, updateUser, incMoney,
   getAllUsersWithWorkers, storageMode,
-  savePendingBets, getPendingBets, clearPendingBets, flushSync
+  savePendingBets, getPendingBets, clearPendingBets, flushSync,
+  createGuild, getGuildByName, listGuilds, addGuildMember, removeGuildMember,
+  addGuildRequest, removeGuildRequest
 };

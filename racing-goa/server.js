@@ -16,6 +16,7 @@ const WORKER_INTERVAL_MS = 8000;
 const HARU_ROSE_PRICE = 30000;
 const HARU_TRASH_UPGRADE_PRICE = 100000; // 쓰레기통 뒤질 때마다 +5원 추가 획득
 const HARU_BAT_PRICE = 500000; // 1등 적중 시 배당 3배 추가 지급
+const GUILD_CREATE_PRICE = 100000000; // 목장 생성 비용 (1억)
 const TRASH_UPGRADE_BONUS = 5;
 const BAT_WIN_MULTIPLIER = 3;
 
@@ -60,7 +61,7 @@ function publicUser(u) {
   return {
     nickname: u.nickname, money: u.money, haruRose: u.haruRose,
     trashUpgrade: !!u.trashUpgrade, haruBat: !!u.haruBat,
-    workerCount: u.workerCount, isAdmin: !!u.isAdmin
+    workerCount: u.workerCount, isAdmin: !!u.isAdmin, guildName: u.guildName || null
   };
 }
 
@@ -345,6 +346,164 @@ io.on("connection", (socket) => {
     await store.incMoney(currentToken, -HARU_BAT_PRICE);
     const updated = await store.updateUser(currentToken, { haruBat: true });
     cb && cb({ ok: true, user: publicUser(updated) });
+  });
+
+  // ---------------- 목장(길드) ----------------
+  socket.on("guild:list", async (data, cb) => {
+    const guilds = await store.listGuilds();
+    cb && cb({ ok: true, guilds });
+  });
+
+  socket.on("guild:create", async (data, cb) => {
+    if (!currentToken) return cb && cb({ ok: false, error: "로그인이 필요합니다." });
+    const user = await store.getUserByToken(currentToken);
+    if (!user) return cb && cb({ ok: false, error: "계정 정보를 찾을 수 없습니다." });
+    if (user.guildName) return cb && cb({ ok: false, error: "이미 목장에 소속되어 있습니다. 먼저 탈퇴해주세요." });
+    const name = ((data && data.name) || "").trim();
+    if (name.length < 1 || name.length > 16 || /[<>]/.test(name)) {
+      return cb && cb({ ok: false, error: "목장 이름은 1~16자, 특수문자(<,>) 제외로 입력해주세요." });
+    }
+    if (user.money < GUILD_CREATE_PRICE) {
+      return cb && cb({ ok: false, error: `목장을 만들려면 $${GUILD_CREATE_PRICE.toLocaleString()}가 필요합니다.` });
+    }
+    const existing = await store.getGuildByName(name);
+    if (existing) return cb && cb({ ok: false, error: "이미 존재하는 목장 이름입니다." });
+    await store.incMoney(currentToken, -GUILD_CREATE_PRICE);
+    await store.createGuild(name, currentToken);
+    const updatedUser = await store.updateUser(currentToken, { guildName: name });
+    cb && cb({ ok: true, user: publicUser(updatedUser) });
+  });
+
+  // 가입 "신청" — 바로 들어가지 않고 목장주 승인 대기 상태가 됨
+  socket.on("guild:join", async (data, cb) => {
+    if (!currentToken) return cb && cb({ ok: false, error: "로그인이 필요합니다." });
+    const user = await store.getUserByToken(currentToken);
+    if (!user) return cb && cb({ ok: false, error: "계정 정보를 찾을 수 없습니다." });
+    if (user.guildName) return cb && cb({ ok: false, error: "이미 목장에 소속되어 있습니다. 먼저 탈퇴해주세요." });
+    const name = ((data && data.name) || "").trim();
+    const guild = await store.getGuildByName(name);
+    if (!guild) return cb && cb({ ok: false, error: "존재하지 않는 목장입니다." });
+    if (guild.pendingRequests.includes(currentToken)) return cb && cb({ ok: false, error: "이미 가입 신청을 보냈습니다. 승인을 기다려주세요." });
+    await store.addGuildRequest(name, currentToken);
+    cb && cb({ ok: true, pending: true });
+    // 목장주에게 신청 알림
+    const ownerInfo = onlineUsers.get(guild.ownerToken);
+    if (ownerInfo) io.to(ownerInfo.socketId).emit("guild:notice", { text: `${user.nickname}님이 "${name}" 목장 가입을 신청했습니다.`, refresh: true });
+  });
+
+  // 목장주가 신청 목록 조회
+  socket.on("guild:requests", async (data, cb) => {
+    if (!currentToken) return cb && cb({ ok: false, error: "로그인이 필요합니다." });
+    const user = await store.getUserByToken(currentToken);
+    if (!user || !user.guildName) return cb && cb({ ok: false, error: "소속된 목장이 없습니다." });
+    const guild = await store.getGuildByName(user.guildName);
+    if (!guild) return cb && cb({ ok: false, error: "목장 정보를 찾을 수 없습니다." });
+    if (guild.ownerToken !== currentToken) return cb && cb({ ok: false, error: "목장주만 볼 수 있습니다." });
+    const requests = [];
+    for (const token of guild.pendingRequests) {
+      const u = await store.getUserByToken(token);
+      if (u) requests.push({ nickname: u.nickname });
+    }
+    cb && cb({ ok: true, requests });
+  });
+
+  // 목장주가 신청 승인
+  socket.on("guild:approve", async (data, cb) => {
+    if (!currentToken) return cb && cb({ ok: false, error: "로그인이 필요합니다." });
+    const user = await store.getUserByToken(currentToken);
+    if (!user || !user.guildName) return cb && cb({ ok: false, error: "소속된 목장이 없습니다." });
+    const guild = await store.getGuildByName(user.guildName);
+    if (!guild) return cb && cb({ ok: false, error: "목장 정보를 찾을 수 없습니다." });
+    if (guild.ownerToken !== currentToken) return cb && cb({ ok: false, error: "목장주만 승인할 수 있습니다." });
+    const targetNickname = ((data && data.nickname) || "").trim();
+    const target = await store.getUserByNickname(targetNickname);
+    if (!target || !guild.pendingRequests.includes(target.token)) return cb && cb({ ok: false, error: "신청 내역을 찾을 수 없습니다." });
+    if (target.guildName) {
+      await store.removeGuildRequest(guild.name, target.token); // 이미 다른 목장 가입한 경우 신청만 정리
+      return cb && cb({ ok: false, error: "이미 다른 목장에 소속된 유저입니다." });
+    }
+    await store.addGuildMember(guild.name, target.token);
+    await store.updateUser(target.token, { guildName: guild.name });
+    cb && cb({ ok: true });
+    const targetInfo = onlineUsers.get(target.token);
+    if (targetInfo) io.to(targetInfo.socketId).emit("guild:notice", { text: `"${guild.name}" 목장 가입이 승인되었습니다!`, refresh: true });
+  });
+
+  // 목장주가 신청 거절
+  socket.on("guild:reject", async (data, cb) => {
+    if (!currentToken) return cb && cb({ ok: false, error: "로그인이 필요합니다." });
+    const user = await store.getUserByToken(currentToken);
+    if (!user || !user.guildName) return cb && cb({ ok: false, error: "소속된 목장이 없습니다." });
+    const guild = await store.getGuildByName(user.guildName);
+    if (!guild) return cb && cb({ ok: false, error: "목장 정보를 찾을 수 없습니다." });
+    if (guild.ownerToken !== currentToken) return cb && cb({ ok: false, error: "목장주만 거절할 수 있습니다." });
+    const targetNickname = ((data && data.nickname) || "").trim();
+    const target = await store.getUserByNickname(targetNickname);
+    if (!target) return cb && cb({ ok: false, error: "유저를 찾을 수 없습니다." });
+    await store.removeGuildRequest(guild.name, target.token);
+    cb && cb({ ok: true });
+    const targetInfo = onlineUsers.get(target.token);
+    if (targetInfo) io.to(targetInfo.socketId).emit("guild:notice", { text: `"${guild.name}" 목장 가입 신청이 거절되었습니다.` });
+  });
+
+  socket.on("guild:leave", async (data, cb) => {
+    if (!currentToken) return cb && cb({ ok: false, error: "로그인이 필요합니다." });
+    const user = await store.getUserByToken(currentToken);
+    if (!user || !user.guildName) return cb && cb({ ok: false, error: "소속된 목장이 없습니다." });
+    const guildName = user.guildName;
+    const result = await store.removeGuildMember(guildName, currentToken);
+    const updatedUser = await store.updateUser(currentToken, { guildName: null });
+    cb && cb({ ok: true, user: publicUser(updatedUser) });
+    if (!result.deleted && result.guild) {
+      result.guild.members.forEach(memberToken => {
+        const info = onlineUsers.get(memberToken);
+        if (info) io.to(info.socketId).emit("guild:notice", { text: `${user.nickname}님이 목장을 나갔습니다.` });
+      });
+    }
+  });
+
+  socket.on("guild:members", async (data, cb) => {
+    if (!currentToken) return cb && cb({ ok: false, error: "로그인이 필요합니다." });
+    const user = await store.getUserByToken(currentToken);
+    if (!user || !user.guildName) return cb && cb({ ok: false, error: "소속된 목장이 없습니다." });
+    const guild = await store.getGuildByName(user.guildName);
+    if (!guild) return cb && cb({ ok: false, error: "목장 정보를 찾을 수 없습니다." });
+    const members = [];
+    for (const token of guild.members) {
+      const u = await store.getUserByToken(token);
+      if (u) members.push({ nickname: u.nickname, isOwner: token === guild.ownerToken, online: onlineUsers.has(token) });
+    }
+    const isOwner = guild.ownerToken === currentToken;
+    cb && cb({ ok: true, guildName: guild.name, ownerNickname: members.find(m => m.isOwner)?.nickname, members, isOwner, pendingCount: guild.pendingRequests.length });
+  });
+
+  socket.on("guild:transfer", async (data, cb) => {
+    if (!currentToken) return cb && cb({ ok: false, error: "로그인이 필요합니다." });
+    const user = await store.getUserByToken(currentToken);
+    if (!user || !user.guildName) return cb && cb({ ok: false, error: "소속된 목장이 없습니다." });
+    const targetNickname = ((data && data.targetNickname) || "").trim();
+    const amount = Math.trunc(Number(data && data.amount));
+    if (!targetNickname) return cb && cb({ ok: false, error: "받는 사람 닉네임을 입력해주세요." });
+    if (!Number.isFinite(amount) || amount < 1) return cb && cb({ ok: false, error: "1 이상의 금액을 입력해주세요." });
+    if (targetNickname === user.nickname) return cb && cb({ ok: false, error: "자기 자신에게는 보낼 수 없습니다." });
+    const target = await store.getUserByNickname(targetNickname);
+    if (!target) return cb && cb({ ok: false, error: `"${targetNickname}" 닉네임의 유저를 찾을 수 없습니다.` });
+    if (target.guildName !== user.guildName) return cb && cb({ ok: false, error: "같은 목장 소속인 사람에게만 보낼 수 있습니다." });
+    if (user.money < amount) return cb && cb({ ok: false, error: "소지금이 부족합니다." });
+
+    const updatedSender = await store.incMoney(currentToken, -amount);
+    const updatedTarget = await store.incMoney(target.token, amount);
+    cb && cb({ ok: true, money: updatedSender.money });
+
+    const targetInfo = onlineUsers.get(target.token);
+    if (targetInfo) {
+      io.to(targetInfo.socketId).emit("guild:moneyReceived", {
+        fromNickname: user.nickname,
+        amount,
+        money: updatedTarget.money,
+        message: `🐴 ${user.nickname}님이 목장에서 $${amount.toLocaleString()}를 보냈습니다.`
+      });
+    }
   });
 
   socket.on("me:refresh", async (data, cb) => {
