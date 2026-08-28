@@ -324,6 +324,13 @@ function updateStamina(h, staminaLeft, phase, race) {
   let drain = (2.2 - h.stats.STAMINA / 60) * drainMult;
   drain += (race.weather.staminaDrain || 0) * 8;
   if (phase === "early") drain *= 1.15;
+
+  // 거리 적성이 좋을수록 그 거리에서 체력을 덜 소모함(자기 거리를 잘 아는 말),
+  // 적성이 나쁘면 체력이 더 빨리 떨어져서 후반에 눈에 띄게 처짐
+  const distGrade = (h.distanceGrades && h.distanceGrades[race.distanceCategory]) || "C";
+  const distDrainMod = { S: 0.75, A: 0.85, B: 0.95, C: 1.0, D: 1.25 }[distGrade] || 1.0;
+  drain *= distDrainMod;
+
   return Math.max(0, staminaLeft - Math.max(0.3, drain));
 }
 
