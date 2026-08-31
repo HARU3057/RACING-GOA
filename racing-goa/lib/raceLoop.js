@@ -37,6 +37,35 @@ function getCurrentRankingIds() {
 
 // 이번 경기 조건(트랙/거리)에 적성이 잘 맞는 말일수록 더 자주 출전하도록
 // 가중치 기반으로 6마리를 뽑는다 (완전 랜덤은 아니지만, 안 맞는 말도 가끔은 나옴)
+// 더트 전용 경기장(두바이)은 다른 경기장보다 덜 뽑히게 가중치를 낮춘다
+// (출전마 대부분이 잔디 특화라서 더트 경기 자체를 좀 줄이기 위함)
+function pickWeightedVenue() {
+  const weighted = engine.VENUES.map(v => ({
+    venue: v,
+    weight: v.trackTypes.length === 1 && v.trackTypes[0] === "dirt" ? 0.5 : 1
+  }));
+  const total = weighted.reduce((sum, w) => sum + w.weight, 0);
+  let r = Math.random() * total;
+  for (const w of weighted) {
+    r -= w.weight;
+    if (r <= 0) return w.venue;
+  }
+  return weighted[weighted.length - 1].venue;
+}
+
+// 잔디/더트를 둘 다 지원하는 경기장에서는 잔디 쪽이 더 자주 나오게 한다
+function pickWeightedTrackType(venue) {
+  if (venue.trackTypes.length === 1) return venue.trackTypes[0];
+  const turfWeight = 3, dirtWeight = 1; // 잔디 75% / 더트 25%
+  const totalWeight = venue.trackTypes.reduce((sum, t) => sum + (t === "turf" ? turfWeight : dirtWeight), 0);
+  let r = Math.random() * totalWeight;
+  for (const t of venue.trackTypes) {
+    r -= (t === "turf" ? turfWeight : dirtWeight);
+    if (r <= 0) return t;
+  }
+  return venue.trackTypes[venue.trackTypes.length - 1];
+}
+
 function selectRaceField(trackType, distanceCategory) {
   const pool = engine.HORSES.map(h => {
     const trackGrade = trackType === "turf" ? h.turfGrade : h.dirtGrade;
@@ -147,8 +176,10 @@ async function run(io, store, onlineUsers, chatHistory, chatMax) {
 
     // 경기 조건(경기장/트랙/거리/날씨)을 먼저 정하고, 그 조건에 맞는 말이
     // 더 자주 뽑히도록 출전마를 선발한다.
-    const venue = engine.VENUES[Math.floor(Math.random() * engine.VENUES.length)];
-    const trackType = venue.trackTypes[Math.floor(Math.random() * venue.trackTypes.length)];
+    // 출전마 대부분이 잔디 특화라서, 더트 전용 경기장(두바이)은 덜 뽑히게,
+    // 잔디/더트 혼합 경기장에서도 잔디가 더 자주 나오게 가중치를 준다.
+    const venue = pickWeightedVenue();
+    const trackType = pickWeightedTrackType(venue);
     const distance = engine.DISTANCES[Math.floor(Math.random() * engine.DISTANCES.length)];
     const distanceCategory = engine.getDistanceCategory(distance);
     const weather = engine.WEATHERS[Math.floor(Math.random() * engine.WEATHERS.length)];
@@ -192,11 +223,23 @@ async function run(io, store, onlineUsers, chatHistory, chatMax) {
     const targetTicks = engine.TARGET_TICKS[state.currentRace.distanceCategory];
     let ticks = 0;
     const raceLuck = engine.rollRaceLuck(state.fieldHorses, state.currentRace);
+    // 골드쉽(운빨 특성)은 "오늘의 운"이 경기 내내 고정되면 저점 뽑혔을 때 계속 처져서 늘어지므로,
+    // 2초(TICK_MS 기준 약 2틱)마다 운을 다시 굴려서 오르내림이 자주 바뀌게 한다.
+    const LUCK_REROLL_TICKS = Math.max(1, Math.round(2000 / engine.TICK_MS));
 
     while (!state.fieldHorses.every(h => state.horsePositions[h.id] >= engine.FINISH_PCT) && ticks < targetTicks * 2.2) {
       ticks++;
       const phase = ticks < targetTicks * 0.3 ? "early" : (ticks < targetTicks * 0.75 ? "mid" : "late");
       const leaderId = getCurrentRankingIds()[0];
+
+      if (ticks % LUCK_REROLL_TICKS === 0) {
+        state.fieldHorses.forEach(h => {
+          if (h.special !== "erratic_genius") return;
+          if (state.horsePositions[h.id] >= engine.FINISH_PCT) return;
+          const rerolled = engine.rollRaceLuck([h], state.currentRace);
+          raceLuck[h.id] = rerolled[h.id];
+        });
+      }
 
       state.fieldHorses.forEach(h => {
         if (state.horsePositions[h.id] >= engine.FINISH_PCT) return;

@@ -85,7 +85,7 @@ const HORSES = [
     title: { name: "정상의 지배자" }, special: "distance_versatile",
     recentForm: [1, 2, 1, 3, 2] },
   { id: 4, name: "듀란달", gender: "수컷", age: 5, origin: "일본", style: "추입형",
-    stats: { SPEED: 88, ACCELERATION: 90, STAMINA: 55, POWER: 62, CORNERING: 84, START: 70, SPRINT: 93, CONSISTENCY: 78 },
+    stats: { SPEED: 82, ACCELERATION: 84, STAMINA: 55, POWER: 62, CORNERING: 84, START: 70, SPRINT: 85, CONSISTENCY: 78 },
     weakness: "장거리 적성이 낮음 — 스태미나가 매우 낮아 중장거리에서 급격히 무너짐",
     turfGrade: "A", dirtGrade: "D",
     distanceGrades: { sprint: "A", mile: "A", middle: "D", long: "D" },
@@ -106,7 +106,7 @@ const HORSES = [
     title: { name: "질풍의 마무리" }, special: "long_closer",
     recentForm: [3, 1, 4, 2, 1] },
   { id: 7, name: "메이쇼 도토", gender: "수컷", age: 5, origin: "일본", style: "선행형",
-    stats: { SPEED: 88, ACCELERATION: 85, STAMINA: 80, POWER: 82, CORNERING: 78, START: 88, SPRINT: 68, CONSISTENCY: 76 },
+    stats: { SPEED: 80, ACCELERATION: 78, STAMINA: 78, POWER: 75, CORNERING: 76, START: 80, SPRINT: 68, CONSISTENCY: 76 },
     weakness: "더트 적성이 낮음, 단거리·마일도 약함",
     turfGrade: "A", dirtGrade: "D",
     distanceGrades: { sprint: "D", mile: "D", middle: "A", long: "A" },
@@ -148,7 +148,7 @@ const HORSES = [
     title: { name: "폭풍을 가르는 자" }, special: "rain_boost",
     recentForm: [5, 6, 2, 5, 1] },
   { id: 13, name: "실버 크라운", gender: "수컷", age: 3, origin: "영국", style: "도주형",
-    stats: { SPEED: 90, ACCELERATION: 86, STAMINA: 67, POWER: 68, CORNERING: 70, START: 92, SPRINT: 71, CONSISTENCY: 73 },
+    stats: { SPEED: 82, ACCELERATION: 78, STAMINA: 67, POWER: 68, CORNERING: 70, START: 84, SPRINT: 71, CONSISTENCY: 73 },
     weakness: "장거리에서는 후반에 급격히 무너짐, 더트도 약함",
     turfGrade: "B", dirtGrade: "D",
     distanceGrades: { sprint: "S", mile: "A", middle: "B", long: "D" },
@@ -211,7 +211,7 @@ function applyTitleEffects(h, race, s, positionPct) {
       if (race.weather.name === "비" || race.weather.name === "폭우") s.ACCELERATION *= 1.22;
       break;
     case "early_burst":
-      s.START *= 1.18; s.ACCELERATION *= 1.16;
+      s.START *= 1.10; s.ACCELERATION *= 1.08;
       break;
     case "final_sprint":
       if (positionPct >= 80) s.SPRINT *= 1.55;
@@ -223,7 +223,7 @@ function applyTitleEffects(h, race, s, positionPct) {
       if (race.distanceCategory === "middle" || race.distanceCategory === "long") { for (const k in s) s[k] *= 1.05; }
       break;
     case "sprint_specialist":
-      if (race.distanceCategory === "sprint") { s.SPRINT *= 1.30; s.ACCELERATION *= 1.15; }
+      if (race.distanceCategory === "sprint") { s.SPRINT *= 1.18; s.ACCELERATION *= 1.08; }
       break;
     case "long_distance_master":
       if (race.distanceCategory === "long") { for (const k in s) s[k] *= 1.04; }
